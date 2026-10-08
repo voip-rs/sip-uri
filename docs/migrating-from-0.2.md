@@ -247,7 +247,7 @@ Each writes into a formatter without allocating, as `Host::bare()` does.
 
 ## Display names and header params
 
-sip-uri parses URIs only (`addr-spec`). `"Alice" <sip:alice@example.com>;tag=abc` is SIP header grammar: parse it with [`SipHeaderAddr`](https://docs.rs/sip-header/latest/sip_header/struct.SipHeaderAddr.html) from [sip-header](https://crates.io/crates/sip-header). Code written against 0.2's `NameAddr` moves there.
+sip-uri parses URIs only (`addr-spec`). `"Alice" <sip:alice@example.com>;tag=abc` is SIP header grammar: parse it with [`SipHeaderAddr`](https://docs.rs/sip-header/%5E1.0.0-beta/sip_header/struct.SipHeaderAddr.html) from [sip-header](https://crates.io/crates/sip-header). Code written against 0.2's `NameAddr` moves there.
 
 ## Also new
 
