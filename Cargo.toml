@@ -15,7 +15,7 @@ serde-rust-version = "1.71"
 
 [package]
 name = "sip-uri"
-version = "0.3.0-rc.1"
+version = "0.3.0-rc.2"
 edition.workspace = true
 rust-version.workspace = true
 authors.workspace = true
@@ -36,7 +36,7 @@ serde = ["dep:serde", "sip-uri-types/serde"]
 
 [dependencies]
 serde = { version = "1", optional = true }
-sip-uri-types = { version = "1.0.0-rc.1", path = "sip-uri-types" }
+sip-uri-types = { version = "1.0.0-rc.2", path = "sip-uri-types" }
 
 [dev-dependencies]
 clap = { version = "4", default-features = false, features = ["std", "help", "usage", "error-context", "derive"] }
