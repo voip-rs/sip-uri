@@ -11,6 +11,11 @@
 //!
 //! Hostnames and URN NIDs have no pair: both are lowercased, so their bytes cannot round-trip.
 //!
+//! The cid pair is the one for text an [`OtherUri`](crate::OtherUri)
+//! holds, because RFC 2392 defines how a cid: content-id decodes. It
+//! escapes `/` as RFC 2392 §2 requires, so its output also fits either
+//! part of a mid: URL.
+//!
 //! ```
 //! use sip_uri_types::encoding::{decode_header, encode_header};
 //! use sip_uri_types::{Host, SipUri};
@@ -28,7 +33,7 @@ use std::borrow::Cow;
 
 use super::{
     escape, escape_at, escape_q_start, is_fragment_literal, is_hnv_literal, is_nss_literal,
-    is_param_literal, is_password_literal, is_rqf_literal, is_sip_fragment_literal,
+    is_param_literal, is_password_literal, is_pchar, is_rqf_literal, is_sip_fragment_literal,
     is_user_literal_or_hash, is_user_param_name_literal, ESCAPE_LEN,
 };
 
@@ -164,10 +169,28 @@ component!(
     |v| escape(v, is_rqf_literal)
 );
 
+component!(
+    /// an RFC 2392 cid: content-id or mid: URL part, as
+    /// [`OtherUri::new`](crate::OtherUri::new) takes it after the scheme.
+    ///
+    /// `%25` decodes to `%`, per RFC 2392 erratum 454, which corrects the
+    /// RFC's own example:
+    ///
+    /// ```
+    /// use sip_uri_types::encoding::{decode_cid, encode_cid};
+    ///
+    /// assert_eq!(decode_cid("foo4%25foo1@example.net").as_ref(), b"foo4%foo1@example.net");
+    /// assert_eq!(encode_cid("foo4%foo1@example.net"), "foo4%25foo1@example.net");
+    /// ```
+    encode_cid,
+    decode_cid,
+    |v| escape(v, is_pchar)
+);
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Host, Pairs, SipUri, TelUri, UrnUri};
+    use crate::{Host, OtherUri, Pairs, SipUri, TelUri, UrnUri};
 
     type Held = fn(&str) -> Option<String>;
 
@@ -384,7 +407,25 @@ mod tests {
                     )
                 }],
             },
+            Codec {
+                name: "cid",
+                encode: |v| encode_cid(v),
+                decode: decode_cid,
+                held: vec![|t| {
+                    OtherUri::new(Some("cid"), t)
+                        .ok()
+                        .map(|u| {
+                            u.rest()
+                                .to_owned()
+                        })
+                }],
+            },
         ]
+    }
+
+    #[test]
+    fn cid_escapes_the_slash_a_mid_url_reserves() {
+        assert_eq!(encode_cid("a/b@example.net"), "a%2Fb@example.net");
     }
 
     #[test]
