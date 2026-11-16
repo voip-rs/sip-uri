@@ -259,7 +259,9 @@ input.
 - the whole userinfo, or a tel: number, becomes `***`;
 - every URI header value becomes `***` (`?Subject=***`), since headers such as `P-Asserted-Identity` carry identities; a header without a value stays its name alone;
 - params are shown, except those named in `params()` and an `ext` or `isub` on a tel: URI or among SIP user-params, which are part of the subscriber's number and take the user mask the number takes; routing params such as `rn` and `cic` stay visible;
-- a URN keeps its NID and masks the rest (`urn:gsma:***`), and a URI of any other scheme keeps only its scheme (`http:***`, or `***` without one), since a device identifier or a malformed caller URI such as `<sip:…>` lands there; `urn(OpaqueMask::Visible)` and `other(OpaqueMask::Visible)` show them.
+- a URN keeps its NID and masks the rest (`urn:gsma:***`), and a URI of any other scheme keeps only its scheme (`http:***`, or `***` without one), since their grammar is not this crate's to search; `OpaqueMask::Visible` shows them.
+
+The default masks where the grammar puts an identity, and does not chase one a sender put elsewhere: a number written as a SIP host (`sip:5551234567`) or as a URN NID shows. `host(HostMask::Masked)` masks the host, and `OpaqueMask::Full` masks a URN's NID or another URI's scheme as well.
 
 A `Redaction` owns its policy and clones cheaply, so one built from configuration is stored once and lent to each `redacted(&how)` call. `Debug` writes a password as `***` but the user part as it is.
 

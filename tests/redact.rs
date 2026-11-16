@@ -1,5 +1,5 @@
 use sip_uri::{
-    HeaderMask, OpaqueMask, Redaction, SipUri, TelUri, Uri, UriParse, UriRedact, UserMask,
+    HeaderMask, HostMask, OpaqueMask, Redaction, SipUri, TelUri, Uri, UriParse, UriRedact, UserMask,
 };
 
 fn sip(s: &str) -> SipUri {
@@ -241,4 +241,54 @@ fn caller_uris_parsed_as_other_are_masked_by_default() {
             uri.to_string()
         );
     }
+}
+
+#[test]
+fn off_grammar_positions_are_shown_by_default_and_masked_on_request() {
+    let host_number = sip("sip:5551234567;transport=udp");
+    assert_eq!(
+        host_number
+            .redacted(&Redaction::default())
+            .to_string(),
+        "sip:5551234567;transport=udp"
+    );
+    let masked_host = Redaction::default().host(HostMask::Masked);
+    assert_eq!(masked_host.host_mask(), HostMask::Masked);
+    assert_eq!(
+        sip("sip:alice@example.com:5060")
+            .redacted(&masked_host)
+            .to_string(),
+        "sip:***@***:5060"
+    );
+
+    let nid_number = Uri::parse("urn:5551234567").unwrap();
+    assert_eq!(
+        nid_number
+            .redacted(&Redaction::default())
+            .to_string(),
+        "urn:5551234567"
+    );
+    let full = Redaction::default()
+        .urn(OpaqueMask::Full)
+        .other(OpaqueMask::Full);
+    assert_eq!(
+        nid_number
+            .redacted(&full)
+            .to_string(),
+        "urn:***"
+    );
+
+    let scheme_user = Uri::parse("alice:secret@example.com").unwrap();
+    assert_eq!(
+        scheme_user
+            .redacted(&Redaction::default())
+            .to_string(),
+        "alice:***"
+    );
+    assert_eq!(
+        scheme_user
+            .redacted(&full)
+            .to_string(),
+        "***"
+    );
 }

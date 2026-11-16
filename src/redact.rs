@@ -51,11 +51,26 @@ pub enum HeaderMask {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum OpaqueMask {
-    /// A URN keeps its NID and becomes `urn:<nid>:***`; another URI keeps
-    /// its scheme and becomes `<scheme>:***`, or `***` without one.
+    /// A URN keeps its NID and becomes `urn:<nid>:***`, or `urn:<nid>`
+    /// without an NSS; another URI keeps its scheme and becomes
+    /// `<scheme>:***`, or `***` without one. A NID or scheme is shown as
+    /// sent, even when it holds an identity the grammar does not put there.
     Masked,
+    /// A URN becomes `urn:***` and another URI `***`, for senders that put
+    /// an identity in the NID or scheme position.
+    Full,
     /// Shown as Display writes it.
     Visible,
+}
+
+/// How the host of a SIP URI is rendered by [`Redaction`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum HostMask {
+    /// Shown as Display writes it, even when a sender put a number there.
+    Visible,
+    /// The host becomes `***`; the port stays.
+    Masked,
 }
 
 /// What a redacted rendering masks.
@@ -109,6 +124,7 @@ pub struct Redaction {
     params: Arc<[String]>,
     urn: OpaqueMask,
     other: OpaqueMask,
+    host: HostMask,
 }
 
 impl Default for Redaction {
@@ -119,11 +135,23 @@ impl Default for Redaction {
             params: Arc::from([]),
             urn: OpaqueMask::Masked,
             other: OpaqueMask::Masked,
+            host: HostMask::Visible,
         }
     }
 }
 
 impl Redaction {
+    /// Set how the host of a SIP URI is rendered.
+    pub fn host(mut self, mask: HostMask) -> Self {
+        self.host = mask;
+        self
+    }
+
+    /// How the host of a SIP URI is rendered.
+    pub fn host_mask(&self) -> HostMask {
+        self.host
+    }
+
     /// Set how a URN is rendered.
     pub fn urn(mut self, mask: OpaqueMask) -> Self {
         self.urn = mask;
@@ -346,8 +374,10 @@ impl fmt::Display for Redacted<'_, SipUri> {
                 f.write_str("@")?;
             }
         }
-        if let Some(host) = uri.host() {
-            write!(f, "{host}")?;
+        match (uri.host(), how.host) {
+            (Some(_), HostMask::Masked) => f.write_str(MASK)?,
+            (Some(host), HostMask::Visible) => write!(f, "{host}")?,
+            (None, _) => {}
         }
         if let Some(port) = uri.port() {
             write!(f, ":{port}")?;
@@ -422,8 +452,16 @@ impl fmt::Display for Redacted<'_, UrnUri> {
                 .nid(),
         ) {
             (OpaqueMask::Visible, _) => write!(f, "{}", self.uri),
-            (_, Some(nid)) => write!(f, "urn:{nid}:{MASK}"),
-            (_, None) => write!(f, "urn:{MASK}"),
+            (OpaqueMask::Masked, Some(nid))
+                if self
+                    .uri
+                    .nss()
+                    .is_none() =>
+            {
+                write!(f, "urn:{nid}")
+            }
+            (OpaqueMask::Masked, Some(nid)) => write!(f, "urn:{nid}:{MASK}"),
+            (OpaqueMask::Masked | OpaqueMask::Full, _) => write!(f, "urn:{MASK}"),
         }
     }
 }
@@ -437,8 +475,8 @@ impl fmt::Display for Redacted<'_, OtherUri> {
                 .scheme(),
         ) {
             (OpaqueMask::Visible, _) => write!(f, "{}", self.uri),
-            (_, Some(scheme)) => write!(f, "{scheme}:{MASK}"),
-            (_, None) => f.write_str(MASK),
+            (OpaqueMask::Masked, Some(scheme)) => write!(f, "{scheme}:{MASK}"),
+            (OpaqueMask::Masked | OpaqueMask::Full, _) => f.write_str(MASK),
         }
     }
 }
