@@ -257,7 +257,7 @@ impl From<OtherUri> for Uri {
 /// assert_eq!(err.to_string(), "expected a SIP URI, found a tel: URI");
 /// assert_eq!(err.into_uri(), uri);
 /// ```
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct KindMismatch {
     expected: &'static str,
     uri: Uri,

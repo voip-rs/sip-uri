@@ -97,6 +97,8 @@ mod tests {
         is_send_sync_unpin::<UrnUri>();
         is_send_sync_unpin::<UrnUriParts>();
         is_send_sync_unpin::<OtherUri>();
+        is_send_sync_unpin::<OtherUriError>();
+        is_send_sync_unpin::<KindMismatch>();
         is_send_sync_unpin::<Host>();
         is_send_sync_unpin::<Hostname>();
         is_send_sync_unpin::<Bare<'static>>();
