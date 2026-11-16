@@ -11,7 +11,8 @@ RUSTDOCFLAGS="-D missing_docs -D rustdoc::broken_intra_doc_links" cargo doc --wo
 cargo test --workspace --all-features --release
 
 # Packages every crate in dependency order, so sip-uri verifies against the
-# sip-uri-types being released rather than the one on crates.io.
+# sip-uri-types and sip-uri-diagnostics being released rather than the ones
+# on crates.io.
 cargo publish --workspace --dry-run
 
 echo "Pre-release checks passed"

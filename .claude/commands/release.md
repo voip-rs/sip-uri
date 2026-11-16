@@ -1,4 +1,4 @@
-Perform a release of sip-uri and/or sip-uri-types.
+Perform a release of sip-uri, sip-uri-types and/or sip-uri-diagnostics.
 
 Optional override: $ARGUMENTS (format: `<crate> X.Y.Z[-rc.N]` pairs). If provided, use those versions.
 
@@ -6,17 +6,19 @@ Optional override: $ARGUMENTS (format: `<crate> X.Y.Z[-rc.N]` pairs). If provide
 
 | Crate | Directory | Tag |
 |---|---|---|
+| sip-uri-diagnostics | `sip-uri-diagnostics/` | `sip-uri-diagnostics-vX.Y.Z[-rc.N]` |
 | sip-uri-types | `sip-uri-types/` | `sip-uri-types-vX.Y.Z[-rc.N]` |
 | sip-uri | repo root | `vX.Y.Z[-rc.N]` |
 
-sip-uri depends on sip-uri-types through a `path` + `version` requirement. Releasing sip-uri-types bumps that requirement too, so sip-uri needs a release whenever its Cargo.toml changed.
+sip-uri depends on sip-uri-types and sip-uri-diagnostics through `path` + `version` requirements. Releasing either bumps sip-uri's requirement on it too, so sip-uri needs a release whenever its Cargo.toml changed. sip-uri-types and sip-uri-diagnostics do not depend on each other.
 
 ## Version determination
 
-1. Find each crate's last release tag (`git tag --sort=-v:refname -l 'v*' | head -1`, `git tag --sort=-v:refname -l 'sip-uri-types-v*' | head -1`).
-2. Examine commits since that tag touching the crate (`git log --oneline <last-tag>..HEAD -- sip-uri-types/` for the data crate; everything else for sip-uri) to classify the release:
+1. Find each crate's last release tag (`git tag --sort=-v:refname -l 'v*' | head -1`, `git tag --sort=-v:refname -l 'sip-uri-types-v*' | head -1`, `git tag --sort=-v:refname -l 'sip-uri-diagnostics-v*' | head -1`).
+2. Examine commits since that tag touching the crate (`git log --oneline <last-tag>..HEAD -- sip-uri-types/` for the data crate, `-- sip-uri-diagnostics/` for the vocabulary crate; everything else for sip-uri) to classify the release:
    - sip-uri (0.x: the minor is the breaking axis): **patch** (0.Y.z+1) for bug fixes, additive API, dependency bumps, build changes, docs; **breaking** (0.Y+1.0) for changed/removed public items or incompatible behavior.
    - sip-uri-types (1.x): **patch** for fixes and docs, **minor** for additive API, **major** for anything breaking. A change to a value's identity (canonical form, equality, Display) is breaking.
+   - sip-uri-diagnostics (1.x, only grows): **patch** for fixes and docs, **minor** for a new warning code, component or other additive API, **major** for anything breaking, which includes removing or renaming a code or component or changing an `as_str` name.
    - Stop and confirm before any breaking release.
 3. A version still in release candidates stays one: bump `-rc.N` until told to cut the final version.
 
@@ -36,7 +38,7 @@ scripts/bench-compare.sh <last-sip-uri-tag>
 scripts/release-check.sh
 ```
 
-   Runs fmt, clippy, docs and tests across the workspace with all features, and `cargo publish --workspace --dry-run`, which verifies sip-uri against the sip-uri-types being released.
+   Runs fmt, clippy, docs and tests across the workspace with all features, and `cargo publish --workspace --dry-run`, which verifies sip-uri against the sip-uri-types and sip-uri-diagnostics being released.
 
 3. Draft one changelog per crate from its commits since its last tag and write each to `scratch/changelog-<tag>.txt` (gitignored; not part of the published package).
 
@@ -61,13 +63,13 @@ scripts/release-check.sh
    - what changed
    ```
 
-4. Bump, commit, and tag, sip-uri-types first when both are released:
+4. Bump, commit, and tag, sip-uri-diagnostics, then sip-uri-types, then sip-uri, listing only the crates being released:
 
 ```sh
-scripts/release-tag.sh sip-uri-types X.Y.Z scratch/changelog-sip-uri-types-vX.Y.Z.txt sip-uri X.Y.Z scratch/changelog-vX.Y.Z.txt
+scripts/release-tag.sh sip-uri-diagnostics X.Y.Z scratch/changelog-sip-uri-diagnostics-vX.Y.Z.txt sip-uri-types X.Y.Z scratch/changelog-sip-uri-types-vX.Y.Z.txt sip-uri X.Y.Z scratch/changelog-vX.Y.Z.txt
 ```
 
-   Bumps each crate's `Cargo.toml` (and sip-uri's requirement on a bumped sip-uri-types), runs `cargo semver-checks` per crate against the new version (skipped for a crate with no release on crates.io yet; a failure restores the manifests and stops), commits `release: …`, detaches HEAD, pins `Cargo.lock` on that detached commit (`build: pin Cargo.lock for …`), signs one tag per crate on it from its changelog file, and returns to the branch. Refuses to run on a dirty tree, off master, or if a tag already exists. Nothing is pushed yet.
+   Bumps each crate's `Cargo.toml` (and sip-uri's requirement on a bumped sip-uri-types or sip-uri-diagnostics), runs `cargo semver-checks` per crate against the new version (skipped for a crate with no release on crates.io yet; a failure restores the manifests and stops), commits `release: …`, detaches HEAD, pins `Cargo.lock` on that detached commit (`build: pin Cargo.lock for …`), signs one tag per crate on it from its changelog file, and returns to the branch. Refuses to run on a dirty tree, off master, or if a tag already exists. Nothing is pushed yet.
 
 5. Push master, wait for CI green:
 
@@ -94,13 +96,13 @@ git push origin <tag>...
 scripts/release-publish.sh <tag>...
 ```
 
-   Checks out the tags' commit, checks each tag against its crate's manifest version, runs one `cargo publish --dry-run` over the tagged crates, then publishes sip-uri-types before sip-uri, and returns to the branch.
+   Checks out the tags' commit, checks each tag against its crate's manifest version, runs one `cargo publish --dry-run` over the tagged crates, then publishes sip-uri-diagnostics, sip-uri-types and sip-uri in that order, and returns to the branch.
 
-8. Report the tags, the changelogs, the CI run that gated the publish, and the crates.io versions (`curl https://index.crates.io/si/p-/sip-uri-types`, `curl https://index.crates.io/si/p-/sip-uri`).
+8. Report the tags, the changelogs, the CI run that gated the publish, and the crates.io versions (`curl https://index.crates.io/si/p-/sip-uri-diagnostics`, `curl https://index.crates.io/si/p-/sip-uri-types`, `curl https://index.crates.io/si/p-/sip-uri`).
 
 ## Important
 
 - **Never publish a commit CI has not run on.** The tags' pin commit differs from the CI-green master tip only by `Cargo.lock`. If anything else changed after the checks — a rebase, a hand-resolved conflict — the earlier green run does not cover it. Re-run the checks and go back to step 5.
 - **Ask before publishing when anything deviated from these steps.** An outage, a rebase, a skipped step, a red-then-fixed run: report the state and let me decide.
 - **Cargo.lock never reaches master** — library crates, stays gitignored there. It exists only on the tags' own commit, so a release build is reproducible.
-- **A sip-uri release candidate names a sip-uri-types release candidate by its full version** (`"1.0.0-rc.1"`), since a caret requirement only matches prereleases when it carries one itself.
+- **A sip-uri release candidate names a sip-uri-types or sip-uri-diagnostics release candidate by its full version** (`"1.0.0-rc.1"`), since a caret requirement only matches prereleases when it carries one itself.

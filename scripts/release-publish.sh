@@ -1,17 +1,20 @@
 #!/bin/bash
 # Checkout the release tags' commit, publish each tagged crate to crates.io,
-# sip-uri-types before sip-uri, and return to the branch.
+# sip-uri-diagnostics before sip-uri-types before sip-uri, and return to the
+# branch.
 #
-# Usage: scripts/release-publish.sh <tag> [<tag>]
-# Tags: vX.Y.Z[-rc.N] for sip-uri, sip-uri-types-vX.Y.Z[-rc.N] for sip-uri-types.
+# Usage: scripts/release-publish.sh <tag> [<tag>]...
+# Tags: vX.Y.Z[-rc.N] for sip-uri, sip-uri-types-vX.Y.Z[-rc.N] for
+# sip-uri-types, sip-uri-diagnostics-vX.Y.Z[-rc.N] for sip-uri-diagnostics.
 
 set -e
 
 if [ $# -eq 0 ]; then
-	echo "Usage: $0 <tag> [<tag>]" >&2
+	echo "Usage: $0 <tag> [<tag>]..." >&2
 	exit 1
 fi
 
+DIAGNOSTICS_TAG=""
 TYPES_TAG=""
 URI_TAG=""
 for tag in "$@"; do
@@ -20,10 +23,11 @@ for tag in "$@"; do
 		exit 1
 	fi
 	case "$tag" in
+	sip-uri-diagnostics-v*) DIAGNOSTICS_TAG="$tag" ;;
 	sip-uri-types-v*) TYPES_TAG="$tag" ;;
 	v*) URI_TAG="$tag" ;;
 	*)
-		echo "Tag $tag names neither sip-uri (vX.Y.Z) nor sip-uri-types (sip-uri-types-vX.Y.Z)." >&2
+		echo "Tag $tag names none of sip-uri (vX.Y.Z), sip-uri-types (sip-uri-types-vX.Y.Z) or sip-uri-diagnostics (sip-uri-diagnostics-vX.Y.Z)." >&2
 		exit 1
 		;;
 	esac
@@ -42,7 +46,7 @@ git checkout "$COMMIT"
 
 # Tag name and manifest version must agree before anything is uploaded.
 PACKAGES=()
-for pair in "sip-uri-types:${TYPES_TAG#sip-uri-types-v}:$TYPES_TAG" "sip-uri:${URI_TAG#v}:$URI_TAG"; do
+for pair in "sip-uri-diagnostics:${DIAGNOSTICS_TAG#sip-uri-diagnostics-v}:$DIAGNOSTICS_TAG" "sip-uri-types:${TYPES_TAG#sip-uri-types-v}:$TYPES_TAG" "sip-uri:${URI_TAG#v}:$URI_TAG"; do
 	IFS=: read -r crate version tag <<<"$pair"
 	[ -n "$tag" ] || continue
 	manifest="$(cargo metadata --no-deps --format-version 1 | jq -r --arg n "$crate" '.packages[] | select(.name == $n) | .version')"

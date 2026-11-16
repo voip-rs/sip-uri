@@ -8,7 +8,8 @@
 # each step here is checked before the next runs.
 #
 # Usage: scripts/release-tag.sh <crate> <X.Y.Z[-rc.N]> <changelog-file> [...]
-# Crates: sip-uri (tag vX.Y.Z) and sip-uri-types (tag sip-uri-types-vX.Y.Z).
+# Crates: sip-uri (tag vX.Y.Z), sip-uri-types (tag sip-uri-types-vX.Y.Z) and
+# sip-uri-diagnostics (tag sip-uri-diagnostics-vX.Y.Z).
 
 set -e
 
@@ -41,8 +42,9 @@ while [ $# -gt 0 ]; do
 	case "$CRATE" in
 	sip-uri) TAG="v$VERSION" ;;
 	sip-uri-types) TAG="sip-uri-types-v$VERSION" ;;
+	sip-uri-diagnostics) TAG="sip-uri-diagnostics-v$VERSION" ;;
 	*)
-		echo "Unknown crate: $CRATE (expected sip-uri or sip-uri-types)" >&2
+		echo "Unknown crate: $CRATE (expected sip-uri, sip-uri-types or sip-uri-diagnostics)" >&2
 		exit 1
 		;;
 	esac
@@ -106,6 +108,10 @@ for i in "${!CRATES[@]}"; do
 		replace_line sip-uri-types/Cargo.toml '^version = "[^"]*"' "version = \"$VERSION\""
 		replace_line Cargo.toml '^sip-uri-types = \{ version = "[^"]*"' "sip-uri-types = { version = \"$VERSION\""
 		;;
+	sip-uri-diagnostics)
+		replace_line sip-uri-diagnostics/Cargo.toml '^version = "[^"]*"' "version = \"$VERSION\""
+		replace_line Cargo.toml '^sip-uri-diagnostics = \{ version = "[^"]*"' "sip-uri-diagnostics = { version = \"$VERSION\""
+		;;
 	esac
 done
 
@@ -115,17 +121,17 @@ for crate in "${CRATES[@]}"; do
 	if ! published "$crate"; then
 		echo "semver-checks skipped for $crate: no release on crates.io to compare against."
 	elif ! cargo semver-checks check-release -p "$crate"; then
-		git checkout -- Cargo.toml sip-uri-types/Cargo.toml
+		git checkout -- Cargo.toml sip-uri-types/Cargo.toml sip-uri-diagnostics/Cargo.toml
 		echo "semver-checks failed for $crate; manifests restored." >&2
 		exit 1
 	fi
 done
 
 # Re-tagging a version the manifests already carry has nothing to commit.
-if git diff --quiet -- Cargo.toml sip-uri-types/Cargo.toml; then
+if git diff --quiet -- Cargo.toml sip-uri-types/Cargo.toml sip-uri-diagnostics/Cargo.toml; then
 	echo "Manifests already at the requested versions; no release commit."
 else
-	git add Cargo.toml sip-uri-types/Cargo.toml
+	git add Cargo.toml sip-uri-types/Cargo.toml sip-uri-diagnostics/Cargo.toml
 	git commit -m "release: $SUBJECT"
 fi
 
