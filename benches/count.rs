@@ -50,6 +50,15 @@ const WORKLOADS: &[(&str, fn())] = &[
             }
         }
     }),
+    ("parse_uri", || {
+        for _ in 0..ROUNDS {
+            for list in [corpus::SIP, corpus::TEL, corpus::URN] {
+                for s in list {
+                    black_box(Uri::parse(black_box(s)).ok());
+                }
+            }
+        }
+    }),
     ("parse_other", || {
         for _ in 0..ROUNDS {
             for s in corpus::OTHER {
