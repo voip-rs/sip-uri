@@ -41,7 +41,7 @@ use std::fmt;
 
 use crate::canon;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "serde"))]
 pub(crate) use storage::limit;
 use storage::PairBuf;
 pub use storage::Pairs;
