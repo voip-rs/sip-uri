@@ -165,8 +165,38 @@ impl fmt::Debug for OtherUri {
 }
 
 impl OtherUri {
-    /// Byte range of the password in `scheme://user:password@host…`.
+    /// Byte range of a password: in `scheme://user:password@host…`, or in
+    /// other text whose part before its first `@` holds a second `:`, as a
+    /// SIP URI left in its angle brackets does.
     fn password_span(&self) -> Option<(usize, usize)> {
+        self.url_password_span()
+            .or_else(|| self.colon_password_span())
+    }
+
+    /// `user:password@` with a scheme or any prefix before it: the text
+    /// between the last `:` and the first `@`, when another `:` precedes.
+    fn colon_password_span(&self) -> Option<(usize, usize)> {
+        let hierarchical = self
+            .scheme_end
+            .and_then(|end| {
+                self.raw
+                    .get(end + 1..)
+            })
+            .is_some_and(|rest| rest.starts_with("//"));
+        if hierarchical {
+            return None;
+        }
+        let at = self
+            .raw
+            .find('@')?;
+        let head = &self.raw[..at];
+        let colon = head.rfind(':')?;
+        head[..colon]
+            .contains(':')
+            .then_some((colon + 1, at))
+    }
+
+    fn url_password_span(&self) -> Option<(usize, usize)> {
         let authority_start = self.scheme_end? + "://".len();
         let authority = self
             .raw
@@ -429,12 +459,24 @@ mod tests {
                 r#"OtherUri("https://example.com/a:b@c")"#,
             ),
             (
+                other("mailto", "alice@example.com"),
+                r#"OtherUri("mailto:alice@example.com")"#,
+            ),
+            (
                 other("mailto", "alice:x@example.com"),
-                r#"OtherUri("mailto:alice:x@example.com")"#,
+                r#"OtherUri("mailto:alice:***@example.com")"#,
             ),
             (
                 OtherUri::new(None, "a:b@c").unwrap(),
                 r#"OtherUri("a:b@c")"#,
+            ),
+            (
+                OtherUri::new(None, "<sip:alice:secret@example.com>").unwrap(),
+                r#"OtherUri("%3Csip:alice:***@example.com%3E")"#,
+            ),
+            (
+                OtherUri::new(None, "sip:+15551234567:pw@example.com;x=a:b@c").unwrap(),
+                r#"OtherUri("sip:+15551234567:***@example.com;x=a:b@c")"#,
             ),
         ];
         for (uri, debug) in cases {
