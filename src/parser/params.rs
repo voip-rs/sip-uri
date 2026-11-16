@@ -31,12 +31,13 @@ pub(crate) const TEL_PARAMS: ParamGrammar = ParamGrammar {
 };
 
 /// Split the params following a `;`, which is not included in `s`, handing
-/// each pair as written to `push` for the data crate to canonize.
+/// each pair as written to `push` for the data crate to canonize. `push`
+/// returns whether the list held the pair; one it could not is reported.
 pub(crate) fn parse_params<'a>(
     s: &'a str,
     grammar: &ParamGrammar,
     warnings: &mut Warnings,
-    mut push: impl FnMut(&'a str, Option<&'a str>),
+    mut push: impl FnMut(&'a str, Option<&'a str>) -> bool,
 ) {
     let component = grammar.component;
     for part in s.split(';') {
@@ -55,16 +56,18 @@ pub(crate) fn parse_params<'a>(
         if let Some(value) = value {
             warnings.charset(component, value, grammar.value);
         }
-        push(name, value);
+        if !push(name, value) {
+            warnings.push(component, WarningCode::TooLong, part, 0);
+        }
     }
 }
 
 /// Split header parameters following a `?`: `name=value` pairs separated by
-/// `&`, each handed as written to `push`.
+/// `&`, each handed as written to `push` as [`parse_params`] does.
 pub(crate) fn parse_headers<'a>(
     s: &'a str,
     warnings: &mut Warnings,
-    mut push: impl FnMut(&'a str, Option<&'a str>),
+    mut push: impl FnMut(&'a str, Option<&'a str>) -> bool,
 ) {
     for part in s.split('&') {
         if part.is_empty() {
@@ -90,7 +93,9 @@ pub(crate) fn parse_headers<'a>(
         if let Some(value) = value {
             warnings.charset(Component::Header, value, HNV);
         }
-        push(name, value);
+        if !push(name, value) {
+            warnings.push(Component::Header, WarningCode::TooLong, part, 0);
+        }
     }
 }
 
@@ -101,7 +106,10 @@ mod tests {
     fn sip_params(s: &str) -> Vec<(&str, Option<&str>)> {
         let mut w = Warnings::new(s);
         let mut params = Vec::new();
-        parse_params(s, &SIP_PARAMS, &mut w, |n, v| params.push((n, v)));
+        parse_params(s, &SIP_PARAMS, &mut w, |n, v| {
+            params.push((n, v));
+            true
+        });
         assert!(!w
             .finish(())
             .has_warnings());
@@ -126,10 +134,38 @@ mod tests {
     }
 
     #[test]
+    fn a_pair_the_list_cannot_hold_is_reported_dropped() {
+        use crate::warning::WarningKind;
+        let refuse = |name: &str| name.starts_with('b');
+        let s = "a=1;b=2;c";
+        let mut w = Warnings::new(s);
+        parse_params(s, &USER_PARAMS, &mut w, |n, _| !refuse(n));
+        let s2 = "a=1&bb";
+        let mut w2 = Warnings::new(s2);
+        parse_headers(s2, &mut w2, |n, _| !refuse(n));
+        let found: Vec<_> = [w.finish(()), w2.finish(())]
+            .into_iter()
+            .flat_map(|p| p.warnings)
+            .filter(|w| w.code == WarningCode::TooLong)
+            .map(|w| (w.component, w.position, w.kind))
+            .collect();
+        assert_eq!(
+            found,
+            [
+                (Component::UserParam, Some(4), WarningKind::Lost),
+                (Component::Header, Some(4), WarningKind::Lost)
+            ]
+        );
+    }
+
+    #[test]
     fn parse_headers_basic() {
         let s = "From=foo@bar&To=bar@baz&Flag";
         let mut headers = Vec::new();
-        parse_headers(s, &mut Warnings::new(s), |n, v| headers.push((n, v)));
+        parse_headers(s, &mut Warnings::new(s), |n, v| {
+            headers.push((n, v));
+            true
+        });
         assert_eq!(
             headers,
             [

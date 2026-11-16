@@ -9,7 +9,7 @@ use serde::de::{
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::host::{Host, Hostname};
-use crate::params::{Headers, Params, UserParams};
+use crate::params::{CapacityError, Headers, Params, UserParams};
 use crate::sip_uri::{Scheme, SipUriParts};
 use crate::tel_uri::TelUriParts;
 use crate::uri::{OtherUri, Uri};
@@ -30,9 +30,13 @@ macro_rules! pair_list_serde {
                     deserializer,
                     concat!("`", $label, "`"),
                     "a sequence of [name, value] pairs",
-                    |d| d.deserialize_seq(PairsVisitor($label)),
+                    |d| {
+                        d.deserialize_seq(PairsVisitor {
+                            label: $label,
+                            push: |list: &mut $ty, name, value| list.try_push(name, value),
+                        })
+                    },
                 )
-                .map(<$ty>::from)
             }
         }
     )*};
@@ -40,21 +44,26 @@ macro_rules! pair_list_serde {
 
 pair_list_serde!(Params => "params", UserParams => "user_params", Headers => "headers");
 
-struct PairsVisitor(&'static str);
+/// Collects a list named `label` through its fallible `push`.
+struct PairsVisitor<L> {
+    label: &'static str,
+    push: fn(&mut L, &str, Option<&str>) -> Result<(), CapacityError>,
+}
 
-impl<'de> Visitor<'de> for PairsVisitor {
-    type Value = Vec<(String, Option<String>)>;
+impl<'de, L: Default> Visitor<'de> for PairsVisitor<L> {
+    type Value = L;
 
     fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("a sequence of [name, value] pairs")
     }
 
     fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
-        let mut pairs = Vec::new();
-        while let Some(pair) = seq.next_element_seed(PairSeed(self.0))? {
-            pairs.push(pair);
+        let mut list = L::default();
+        while let Some((name, value)) = seq.next_element_seed(PairSeed(self.label))? {
+            (self.push)(&mut list, &name, value.as_deref())
+                .map_err(|e| A::Error::custom(format_args!("invalid `{}`: {e}", self.label)))?;
         }
-        Ok(pairs)
+        Ok(list)
     }
 }
 
@@ -845,6 +854,20 @@ mod tests {
             "Subject".to_owned(),
             Some("x".to_owned()),
         )]));
+    }
+
+    #[test]
+    fn a_list_past_the_limit_fails_naming_its_field() {
+        let pairs = json!([["a", "1"], ["MARKER", null]]);
+        let err = crate::params::limit::with(7, || {
+            serde_json::from_value::<Headers>(pairs.clone())
+                .unwrap_err()
+                .to_string()
+        });
+        assert!(err.contains("`headers`"), "{err}");
+        assert!(err.contains("u32::MAX"), "{err}");
+        assert!(!err.contains("MARKER"), "{err}");
+        assert!(serde_json::from_value::<Headers>(pairs).is_ok());
     }
 
     #[test]

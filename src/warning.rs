@@ -227,6 +227,9 @@ warning_codes! {
     InvalidNid => "invalid-nid", "invalid namespace identifier";
     /// An IPv6 zone identifier after `%`, which a host cannot hold, dropped.
     Ipv6Zone => "ipv6-zone", "IPv6 zone identifier dropped";
+    /// A param, user-param or header that would take its list's text past
+    /// `u32::MAX` bytes, dropped.
+    TooLong => "too-long", "list text over the size limit dropped";
 }
 
 impl WarningCode {
@@ -255,7 +258,8 @@ impl WarningCode {
             | WarningCode::EmptyUserinfo
             | WarningCode::MissingNumber
             | WarningCode::MissingNid
-            | WarningCode::MissingNss => WarningKind::Lost,
+            | WarningCode::MissingNss
+            | WarningCode::TooLong => WarningKind::Lost,
             _ => WarningKind::Recovered,
         }
     }

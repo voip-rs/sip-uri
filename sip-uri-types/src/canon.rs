@@ -213,23 +213,35 @@ fn canonical_len(input: &str, keep: Class) -> usize {
 
 /// [`canonize`] of `input` whose first `start` bytes are canonical.
 fn canonize_from(input: &str, start: usize, decode: Class, keep: Class) -> String {
+    let mut out = String::with_capacity(input.len());
+    push_canonized_from(&mut out, input, start, decode, keep);
+    out
+}
+
+/// Append [`canonize`] of `input` to `out`, copied whole when it is already
+/// canonical.
+fn push_canonized(out: &mut String, input: &str, decode: Class, keep: Class) {
+    let start = canonical_len(input, keep);
+    push_canonized_from(out, input, start, decode, keep);
+}
+
+/// [`push_canonized`] of `input` whose first `start` bytes are canonical.
+fn push_canonized_from(out: &mut String, input: &str, start: usize, decode: Class, keep: Class) {
     let bytes = input.as_bytes();
-    let mut out = String::with_capacity(bytes.len());
     out.push_str(&input[..start]);
     let mut i = start;
     while i < bytes.len() {
         match escape_at(bytes, i) {
             Some(b) => {
-                push_octet(&mut out, b, decode);
+                push_octet(out, b, decode);
                 i += ESCAPE_LEN;
             }
             None => {
-                push_octet(&mut out, bytes[i], keep);
+                push_octet(out, bytes[i], keep);
                 i += 1;
             }
         }
     }
-    out
 }
 
 /// [`canonize`], borrowing `input` when it is already canonical.
@@ -282,12 +294,14 @@ pub(crate) fn canonize_user<'a>(input: impl Into<Cow<'a, str>>) -> String {
     canonize(input.into(), UNRESERVED, USER_OR_HASH)
 }
 
-/// Canonize a user-param name and value.
-pub(crate) fn canonize_user_param(name: &str, value: Option<&str>) -> (String, Option<String>) {
-    (
-        canonize(name.into(), UNRESERVED, USER_PARAM_NAME),
-        value.map(canonize_user),
-    )
+/// Append a user-param name to `out`, canonized.
+pub(crate) fn push_user_param_name(out: &mut String, name: &str) {
+    push_canonized(out, name, UNRESERVED, USER_PARAM_NAME);
+}
+
+/// Append a user-param value to `out`, canonized like a user part.
+pub(crate) fn push_user_param_value(out: &mut String, value: &str) {
+    push_canonized(out, value, UNRESERVED, USER_OR_HASH);
 }
 
 /// Canonize a password.
@@ -295,30 +309,28 @@ pub(crate) fn canonize_password<'a>(input: impl Into<Cow<'a, str>>) -> String {
     canonize(input.into(), UNRESERVED, PASSWORD)
 }
 
-/// Canonize a SIP or tel: param name and value.
-pub(crate) fn canonize_param(name: &str, value: Option<&str>) -> (String, Option<String>) {
-    let one = |s: &str| canonize(s.into(), UNRESERVED, PARAM);
-    (one(name), value.map(one))
+/// Append a SIP or tel: param name or value to `out`, canonized.
+pub(crate) fn push_param(out: &mut String, text: &str) {
+    push_canonized(out, text, UNRESERVED, PARAM);
 }
 
-/// Canonize a SIP URI header name and value.
-pub(crate) fn canonize_header(name: &str, value: Option<&str>) -> (String, Option<String>) {
-    let one = |s: &str| canonize(s.into(), UNRESERVED, HNV);
-    (one(name), value.map(one))
+/// Append a SIP URI header name or value to `out`, canonized.
+pub(crate) fn push_header(out: &mut String, text: &str) {
+    push_canonized(out, text, UNRESERVED, HNV);
 }
 
-/// A user-param name as [`canonize_user_param`] holds it, borrowed when
+/// A user-param name as [`push_user_param_name`] writes it, borrowed when
 /// unchanged.
 pub(crate) fn user_param_name(name: &str) -> Cow<'_, str> {
     canonize_cow(name, UNRESERVED, USER_PARAM_NAME)
 }
 
-/// A param name as [`canonize_param`] holds it, borrowed when unchanged.
+/// A param name as [`push_param`] writes it, borrowed when unchanged.
 pub(crate) fn param_name(name: &str) -> Cow<'_, str> {
     canonize_cow(name, UNRESERVED, PARAM)
 }
 
-/// A header name as [`canonize_header`] holds it, borrowed when unchanged.
+/// A header name as [`push_header`] writes it, borrowed when unchanged.
 pub(crate) fn header_name(name: &str) -> Cow<'_, str> {
     canonize_cow(name, UNRESERVED, HNV)
 }
@@ -420,12 +432,18 @@ mod tests {
 
     #[test]
     fn canonizers_are_idempotent() {
-        let fns: [fn(&str) -> String; 14] = [
+        fn appended(push: fn(&mut String, &str), s: &str) -> String {
+            let mut out = String::from("held");
+            push(&mut out, s);
+            out.split_off("held".len())
+        }
+        let fns: [fn(&str) -> String; 15] = [
             |s| canonize_user(s),
-            |s| canonize_user_param(s, None).0,
+            |s| appended(push_user_param_name, s),
+            |s| appended(push_user_param_value, s),
             |s| canonize_password(s),
-            |s| canonize_param(s, None).0,
-            |s| canonize_header(s, None).0,
+            |s| appended(push_param, s),
+            |s| appended(push_header, s),
             |s| canonize_tel_number(s),
             |s| canonize_sip_fragment(s),
             |s| canonize_fragment(s),

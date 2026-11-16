@@ -73,7 +73,8 @@ pub(crate) fn parse_split(
         parse_params(p, &params::TEL_PARAMS, &mut warnings, |n, v| {
             parts
                 .params
-                .push(n, v)
+                .try_push(n, v)
+                .is_ok()
         });
     }
 

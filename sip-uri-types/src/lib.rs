@@ -57,7 +57,8 @@
 //! The minimum supported Rust version is 1.70, 1.71 with the `serde`
 //! feature. Raising it is a minor release.
 
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
+#![warn(clippy::undocumented_unsafe_blocks)]
 
 mod canon;
 mod host;
@@ -71,7 +72,7 @@ mod urn_uri;
 
 pub use canon::encoding;
 pub use host::{Bare, Host, Hostname};
-pub use params::{Headers, Pairs, Params, UserParams};
+pub use params::{CapacityError, Headers, Pairs, Params, UserParams};
 pub use sip_uri::{Scheme, SipUri, SipUriParts, UserHost};
 pub use tel_uri::{TelUri, TelUriParts};
 pub use uri::{KindMismatch, OtherUri, OtherUriError, Uri};
