@@ -1,10 +1,11 @@
 //! Rendering a URI for logs.
 //!
-//! What a log may carry is deployment policy, so every URI kind starts
-//! masked and the caller relaxes each part on its own. A URN's NSS and the
-//! text of an unrecognized URI are masked whole, since a device identifier
-//! or a malformed caller URI lands there and no grammar here finds the
-//! identity inside.
+//! The defaults follow the rationale's "Redaction masks only what
+//! identifies a person": a position the grammar gives a person's identity
+//! is masked, public data stays, a position whose content this crate cannot
+//! classify starts masked, and an identity a sender put off-grammar is
+//! masked only on request. Every default is Display output of the adapter,
+//! so changing one is a breaking release.
 
 use std::fmt;
 use std::sync::Arc;
@@ -51,10 +52,13 @@ pub enum HeaderMask {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum OpaqueMask {
-    /// A URN keeps its NID and becomes `urn:<nid>:***`, or `urn:<nid>`
-    /// without an NSS; another URI keeps its scheme and becomes
-    /// `<scheme>:***`, or `***` without one. A NID or scheme is shown as
-    /// sent, even when it holds an identity the grammar does not put there.
+    /// What may identify a person is masked, the rest shown. A URN in a
+    /// [public kind](Redaction::public_urns) is shown whole; another
+    /// becomes `urn:<nid>:***`, or `urn:<nid>` without an NSS. A
+    /// hierarchical URI (`scheme://`) masks its userinfo and query,
+    /// `https://***@example.com/a?***#f`; any other becomes `<scheme>:***`,
+    /// or `***` without a scheme. A NID or scheme is shown as sent, even
+    /// when a sender put an identity there.
     Masked,
     /// A URN becomes `urn:***` and another URI `***`, for senders that put
     /// an identity in the NID or scheme position.
@@ -77,13 +81,15 @@ pub enum HostMask {
 ///
 /// [`Redaction::default`] masks the whole userinfo, or a tel: number, and
 /// every URI header value, since headers such as `P-Asserted-Identity`
-/// carry identities: `sip:***@example.com?Subject=***`. It also masks a
-/// URN's NSS and everything after the scheme of an unrecognized URI, where
-/// device identifiers and malformed caller URIs land; see [`OpaqueMask`].
-/// Params are shown unless named in [`Redaction::params`], except that an
-/// `ext` or `isub` on a tel: URI or among SIP user-params, part of the
-/// subscriber's number, is masked by the [`UserMask`] as the number is.
-/// Routing params such as `rn` or `cic` stay shown. A password is `***` under every
+/// carry identities: `sip:***@example.com?Subject=***`. A URN outside the
+/// [public kinds](Redaction::public_urns) and the userinfo and query of
+/// an unrecognized URI are masked too; see [`OpaqueMask::Masked`]. Params
+/// are shown unless named in [`Redaction::params`], except that an `ext` or
+/// `isub` on a tel: URI or among SIP user-params, part of the subscriber's
+/// number, is masked by the [`UserMask`] as the number is. Hosts and
+/// routing params such as `rn` or `cic` are public and stay shown; a number
+/// a sender put in host or NID position shows unless [`HostMask::Masked`]
+/// or [`OpaqueMask::Full`] masks it. A password is `***` under every
 /// [`UserMask`].
 ///
 /// A policy owns its data and clones cheaply, so one read from configuration
@@ -125,6 +131,7 @@ pub struct Redaction {
     urn: OpaqueMask,
     other: OpaqueMask,
     host: HostMask,
+    public_urns: Arc<[String]>,
 }
 
 impl Default for Redaction {
@@ -136,11 +143,64 @@ impl Default for Redaction {
             urn: OpaqueMask::Masked,
             other: OpaqueMask::Masked,
             host: HostMask::Visible,
+            public_urns: ["service", "nena:service", "emergency:uid"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
         }
     }
 }
 
+/// Whether `urn` falls under `entry`, a NID alone or `nid:nss-prefix`. The
+/// NID compares ignoring ASCII case, the NSS prefix exactly and only up to
+/// a `:` boundary.
+fn urn_under(entry: &str, urn: &UrnUri) -> bool {
+    let (nid, prefix) = match entry.split_once(':') {
+        Some((nid, prefix)) => (nid, Some(prefix)),
+        None => (entry, None),
+    };
+    let nid_matches = urn
+        .nid()
+        .is_some_and(|n| n.eq_ignore_ascii_case(nid));
+    let nss = urn
+        .nss()
+        .unwrap_or_default();
+    nid_matches
+        && prefix.map_or(true, |p| {
+            nss == p
+                || nss
+                    .strip_prefix(p)
+                    .is_some_and(|rest| rest.starts_with(':'))
+        })
+}
+
 impl Redaction {
+    /// Show URNs of these kinds in full under [`OpaqueMask::Masked`], in
+    /// place of the default list. An entry is a NID (`service`) or a NID with
+    /// the leading NSS components of one kind (`nena:service`). The default
+    /// lists `service` and `nena:service` service URNs, and `emergency:uid`
+    /// call, incident and log identifiers. A kind is listed only when no URN
+    /// of it identifies a person.
+    pub fn public_urns<I, S>(mut self, kinds: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.public_urns = kinds
+            .into_iter()
+            .map(Into::into)
+            .collect();
+        self
+    }
+
+    /// Whether `urn` is of a kind [`public_urns`](Redaction::public_urns)
+    /// lists.
+    pub fn is_public_urn(&self, urn: &UrnUri) -> bool {
+        self.public_urns
+            .iter()
+            .any(|entry| urn_under(entry, urn))
+    }
+
     /// Set how the host of a SIP URI is rendered.
     pub fn host(mut self, mask: HostMask) -> Self {
         self.host = mask;
@@ -464,6 +524,13 @@ impl fmt::Display for Redacted<'_, UrnUri> {
                 .nid(),
         ) {
             (OpaqueMask::Visible, _) => write!(f, "{}", self.uri),
+            (OpaqueMask::Masked, Some(_))
+                if self
+                    .how
+                    .is_public_urn(self.uri) =>
+            {
+                write!(f, "{}", self.uri)
+            }
             (OpaqueMask::Masked, Some(nid))
                 if self
                     .uri
@@ -487,8 +554,41 @@ impl fmt::Display for Redacted<'_, OtherUri> {
                 .scheme(),
         ) {
             (OpaqueMask::Visible, _) => write!(f, "{}", self.uri),
-            (OpaqueMask::Masked, Some(scheme)) => write!(f, "{scheme}:{MASK}"),
+            (OpaqueMask::Masked, Some(scheme)) => {
+                let rest = self
+                    .uri
+                    .as_str()
+                    .get(scheme.len() + 1..)
+                    .unwrap_or_default();
+                write_masked_other(f, scheme, rest)
+            }
             (OpaqueMask::Masked | OpaqueMask::Full, _) => f.write_str(MASK),
         }
     }
+}
+
+/// `scheme://authority/path?query#fragment` with the userinfo and query
+/// masked; a URI without `//` has no part to locate and is masked whole.
+fn write_masked_other(f: &mut fmt::Formatter<'_>, scheme: &str, rest: &str) -> fmt::Result {
+    let Some(hier) = rest.strip_prefix("//") else {
+        return write!(f, "{scheme}:{MASK}");
+    };
+    let authority_end = hier
+        .find(['/', '?', '#'])
+        .unwrap_or(hier.len());
+    let (authority, tail) = hier.split_at(authority_end);
+    write!(f, "{scheme}://")?;
+    match authority.rsplit_once('@') {
+        Some((_, host)) => write!(f, "{MASK}@{host}")?,
+        None => f.write_str(authority)?,
+    }
+    let fragment_start = tail
+        .find('#')
+        .unwrap_or(tail.len());
+    let (before_fragment, fragment) = tail.split_at(fragment_start);
+    match before_fragment.split_once('?') {
+        Some((path, _)) => write!(f, "{path}?{MASK}")?,
+        None => f.write_str(before_fragment)?,
+    }
+    f.write_str(fragment)
 }

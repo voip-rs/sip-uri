@@ -23,8 +23,9 @@
 //! # Logging and comparison
 //!
 //! `Display` writes the user part and password. Logs use
-//! [`UriRedact::redacted`] with a [`Redaction`], which masks every identity
-//! by default and is relaxed per deployment.
+//! [`UriRedact::redacted`] with a [`Redaction`], which by default masks
+//! what identifies a person and shows what is public, such as hosts, and is
+//! relaxed or tightened per deployment.
 //!
 //! `==` is canonical identity: param order and name case count.
 //! [`UriEquivalence`] is the RFC comparison, which is not transitive.

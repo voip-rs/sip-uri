@@ -259,9 +259,10 @@ input.
 - the whole userinfo, or a tel: number, becomes `***`;
 - every URI header value becomes `***` (`?Subject=***`), since headers such as `P-Asserted-Identity` carry identities; a header without a value stays its name alone;
 - params are shown, except those named in `params()` and an `ext` or `isub` on a tel: URI or among SIP user-params, which are part of the subscriber's number and take the user mask the number takes; routing params such as `rn` and `cic` stay visible;
-- a URN keeps its NID and masks the rest (`urn:gsma:***`), and a URI of any other scheme keeps only its scheme (`http:***`, or `***` without one), since their grammar is not this crate's to search; `OpaqueMask::Visible` shows them.
+- a URN of a public kind is shown (service URNs such as `urn:service:sos` and `urn:nena:service:…`, and `urn:emergency:uid:…` call, incident and log identifiers; `public_urns()` sets the list), and any other keeps its NID and masks the rest (`urn:gsma:***`);
+- a hierarchical URI of any other scheme masks its userinfo and query (`https://***@example.com/adr?***`), and one without `//` keeps only its scheme (`mailto:***`, or `***` with no scheme), since no part of it can be located; `OpaqueMask::Visible` shows them.
 
-The default masks where the grammar puts an identity, and does not chase one a sender put elsewhere: a number written as a SIP host (`sip:5551234567`) or as a URN NID shows. `host(HostMask::Masked)` masks the host, and `OpaqueMask::Full` masks a URN's NID or another URI's scheme as well.
+The default masks only what identifies a person: hosts, routing params, namespaces and schemes are public and stay visible for debugging. It does not chase an identity a sender put where the grammar places none: a number written as a SIP host (`sip:5551234567`) or as a URN NID shows. `host(HostMask::Masked)` masks the host, and `OpaqueMask::Full` masks a URN's NID or another URI's scheme as well.
 
 A `Redaction` owns its policy and clones cheaply, so one built from configuration is stored once and lent to each `redacted(&how)` call. `Debug` writes a password as `***` but the user part as it is.
 

@@ -1,5 +1,6 @@
 use sip_uri::{
-    HeaderMask, HostMask, OpaqueMask, Redaction, SipUri, TelUri, Uri, UriParse, UriRedact, UserMask,
+    HeaderMask, HostMask, OpaqueMask, Redaction, SipUri, TelUri, Uri, UriParse, UriRedact, UrnUri,
+    UserMask,
 };
 
 fn sip(s: &str) -> SipUri {
@@ -209,12 +210,71 @@ fn uri_dispatches_to_each_kind() {
 }
 
 #[test]
+fn public_urn_kinds_are_shown() {
+    let shown = [
+        "urn:Service:sos",
+        "urn:nena:service:responder.police",
+        "urn:nena:service",
+        "urn:emergency:uid:callid:TEST1:bcf.example.com",
+        "urn:emergency:uid:incidentid:TEST2:psap.example.com",
+    ];
+    for text in shown {
+        let urn = Uri::parse(text).unwrap();
+        assert_eq!(
+            urn.redacted(&Redaction::default())
+                .to_string(),
+            urn.to_string(),
+            "{text}"
+        );
+    }
+    let masked = [
+        ("urn:nena:companyid:TEST3", "urn:nena:***"),
+        ("urn:nena:serviceX:TEST4", "urn:nena:***"),
+        ("urn:emergency:other:TEST5", "urn:emergency:***"),
+        ("urn:example:TEST-1", "urn:example:***"),
+    ];
+    for (text, expected) in masked {
+        assert_eq!(
+            Uri::parse(text)
+                .unwrap()
+                .redacted(&Redaction::default())
+                .to_string(),
+            expected
+        );
+    }
+
+    let listed = Redaction::default().public_urns(["EXAMPLE", "nena:companyid"]);
+    let example = UrnUri::parse("urn:example:TEST-1").unwrap();
+    let company = UrnUri::parse("urn:nena:companyid:TEST3").unwrap();
+    let sos = UrnUri::parse("urn:service:sos").unwrap();
+    assert!(listed.is_public_urn(&example));
+    assert!(listed.is_public_urn(&company));
+    assert!(!listed.is_public_urn(&sos));
+    assert_eq!(
+        sos.redacted(&listed)
+            .to_string(),
+        "urn:service:***"
+    );
+}
+
+#[test]
 fn caller_uris_parsed_as_other_are_masked_by_default() {
     let inputs = [
         ("<sip:+15551234567@example.com>", "***"),
         ("+15551234567@example.com", "***"),
         ("\"Alice\" <sip:+15551234567@example.com>", "***"),
-        ("http://alice:secret@example.com/", "http:***"),
+        (
+            "http://alice:secret@example.com/",
+            "http://***@example.com/",
+        ),
+        (
+            "https://u@[2001:db8::1]:8443/adr/1?caller=+15551234567#top",
+            "https://***@[2001:db8::1]:8443/adr/1?***#top",
+        ),
+        ("https://example.com?token=x", "https://example.com?***"),
+        ("https://example.com/a#b?c", "https://example.com/a#b?c"),
+        ("mailto:alice@example.com", "mailto:***"),
+        ("cid:part1@example.com", "cid:***"),
     ];
     let visible = Redaction::default().other(OpaqueMask::Visible);
     assert_eq!(visible.other_mask(), OpaqueMask::Visible);
