@@ -163,7 +163,7 @@ impl fmt::Display for Bare<'_> {
         match self.0 {
             Host::Ipv4(addr) => write!(f, "{addr}"),
             Host::Ipv6(addr) => write!(f, "{addr}"),
-            Host::Hostname(name) => write!(f, "{name}"),
+            Host::Hostname(name) => f.write_str(name.as_str()),
         }
     }
 }
@@ -173,7 +173,7 @@ impl fmt::Display for Host {
         match self {
             Host::Ipv4(addr) => write!(f, "{addr}"),
             Host::Ipv6(addr) => write!(f, "[{addr}]"),
-            Host::Hostname(name) => write!(f, "{name}"),
+            Host::Hostname(name) => f.write_str(name.as_str()),
         }
     }
 }

@@ -245,9 +245,11 @@ pair_list!(
 /// Write each pair as `;name` or `;name=value`.
 pub(crate) fn format_params(pairs: Pairs<'_>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     for (name, value) in pairs {
-        write!(f, ";{name}")?;
+        f.write_str(";")?;
+        f.write_str(name)?;
         if let Some(v) = value {
-            write!(f, "={v}")?;
+            f.write_str("=")?;
+            f.write_str(v)?;
         }
     }
     Ok(())
@@ -259,10 +261,12 @@ pub(crate) fn format_headers(headers: &Headers, f: &mut fmt::Formatter<'_>) -> f
         .iter()
         .enumerate()
     {
-        let sep = if i == 0 { '?' } else { '&' };
-        write!(f, "{sep}{name}")?;
+        let sep = if i == 0 { "?" } else { "&" };
+        f.write_str(sep)?;
+        f.write_str(name)?;
         if let Some(v) = value {
-            write!(f, "={v}")?;
+            f.write_str("=")?;
+            f.write_str(v)?;
         }
     }
     Ok(())

@@ -191,7 +191,8 @@ impl fmt::Display for AssignedName<'_> {
             f.write_str(nid)?;
         }
         if let Some(ref nss) = urn.nss {
-            write!(f, ":{nss}")?;
+            f.write_str(":")?;
+            f.write_str(nss)?;
         }
         Ok(())
     }
@@ -199,15 +200,18 @@ impl fmt::Display for AssignedName<'_> {
 
 impl fmt::Display for UrnUri {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.assigned_name())?;
+        fmt::Display::fmt(&self.assigned_name(), f)?;
         if let Some(ref r) = self.r_component {
-            write!(f, "?+{r}")?;
+            f.write_str("?+")?;
+            f.write_str(r)?;
         }
         if let Some(ref q) = self.q_component {
-            write!(f, "?={q}")?;
+            f.write_str("?=")?;
+            f.write_str(q)?;
         }
         if let Some(ref frag) = self.f_component {
-            write!(f, "#{frag}")?;
+            f.write_str("#")?;
+            f.write_str(frag)?;
         }
         Ok(())
     }

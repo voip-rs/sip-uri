@@ -453,10 +453,11 @@ impl fmt::Display for UserHost<'_> {
             .as_deref()
             .filter(|u| !u.is_empty())
         {
-            write!(f, "{user}@")?;
+            f.write_str(user)?;
+            f.write_str("@")?;
         }
         if let Some(ref host) = uri.host {
-            write!(f, "{host}")?;
+            fmt::Display::fmt(host, f)?;
         }
         if let Some(port) = uri.port {
             write!(f, ":{port}")?;
@@ -468,26 +469,30 @@ impl fmt::Display for UserHost<'_> {
 impl fmt::Display for SipUri {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(scheme) = self.scheme {
-            write!(f, "{scheme}:")?;
+            f.write_str(scheme.as_str())?;
+            f.write_str(":")?;
         }
 
         if let Some(ref user) = self.user {
-            write!(f, "{user}")?;
+            f.write_str(user)?;
             params::format_params(
                 self.user_params
                     .iter(),
                 f,
             )?;
             if let Some(ref pwd) = self.password {
-                write!(f, ":{pwd}")?;
+                f.write_str(":")?;
+                f.write_str(pwd)?;
             }
-            write!(f, "@")?;
+            f.write_str("@")?;
         } else if let Some(ref pwd) = self.password {
-            write!(f, ":{pwd}@")?;
+            f.write_str(":")?;
+            f.write_str(pwd)?;
+            f.write_str("@")?;
         }
 
         if let Some(ref host) = self.host {
-            write!(f, "{host}")?;
+            fmt::Display::fmt(host, f)?;
         }
         if let Some(port) = self.port {
             write!(f, ":{port}")?;
@@ -499,7 +504,8 @@ impl fmt::Display for SipUri {
         )?;
         params::format_headers(&self.headers, f)?;
         if let Some(ref frag) = self.fragment {
-            write!(f, "#{frag}")?;
+            f.write_str("#")?;
+            f.write_str(frag)?;
         }
 
         Ok(())

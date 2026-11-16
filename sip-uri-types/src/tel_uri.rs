@@ -140,9 +140,9 @@ impl TelUri {
 
 impl fmt::Display for TelUri {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "tel:")?;
+        f.write_str("tel:")?;
         if let Some(ref number) = self.number {
-            write!(f, "{number}")?;
+            f.write_str(number)?;
         }
         params::format_params(
             self.params
@@ -150,7 +150,8 @@ impl fmt::Display for TelUri {
             f,
         )?;
         if let Some(ref frag) = self.fragment {
-            write!(f, "#{frag}")?;
+            f.write_str("#")?;
+            f.write_str(frag)?;
         }
         Ok(())
     }

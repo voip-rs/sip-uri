@@ -393,10 +393,10 @@ impl AsRef<str> for OtherUri {
 impl fmt::Display for Uri {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Uri::Sip(u) => write!(f, "{u}"),
-            Uri::Tel(u) => write!(f, "{u}"),
-            Uri::Urn(u) => write!(f, "{u}"),
-            Uri::Other(o) => write!(f, "{o}"),
+            Uri::Sip(u) => fmt::Display::fmt(u, f),
+            Uri::Tel(u) => fmt::Display::fmt(u, f),
+            Uri::Urn(u) => fmt::Display::fmt(u, f),
+            Uri::Other(o) => fmt::Display::fmt(o, f),
         }
     }
 }

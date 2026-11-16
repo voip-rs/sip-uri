@@ -440,14 +440,21 @@ fn write_params(
     tel: bool,
 ) -> fmt::Result {
     for (name, value) in params {
-        write!(f, ";{name}")?;
+        f.write_str(";")?;
+        f.write_str(name)?;
         match value {
-            Some(_) if how.masks_param(name) => write!(f, "={MASK}")?,
+            Some(_) if how.masks_param(name) => {
+                f.write_str("=")?;
+                f.write_str(MASK)?;
+            }
             Some(v) if tel && carries_number(name) => {
                 f.write_str("=")?;
                 write_masked_user(f, v, how.user)?;
             }
-            Some(v) => write!(f, "={v}")?,
+            Some(v) => {
+                f.write_str("=")?;
+                f.write_str(v)?;
+            }
             None => {}
         }
     }
@@ -458,7 +465,8 @@ impl fmt::Display for Redacted<'_, SipUri> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (uri, how) = (self.uri, self.how);
         if let Some(scheme) = uri.scheme() {
-            write!(f, "{scheme}:")?;
+            f.write_str(scheme.as_str())?;
+            f.write_str(":")?;
         }
         if uri
             .user()
@@ -468,7 +476,8 @@ impl fmt::Display for Redacted<'_, SipUri> {
                 .is_some()
         {
             if how.user == UserMask::Full {
-                write!(f, "{MASK}@")?;
+                f.write_str(MASK)?;
+                f.write_str("@")?;
             } else {
                 if let Some(user) = uri.user() {
                     write_masked_user(f, user, how.user)?;
@@ -484,14 +493,15 @@ impl fmt::Display for Redacted<'_, SipUri> {
                     .password()
                     .is_some()
                 {
-                    write!(f, ":{MASK}")?;
+                    f.write_str(":")?;
+                    f.write_str(MASK)?;
                 }
                 f.write_str("@")?;
             }
         }
         match (uri.host(), how.host) {
             (Some(_), HostMask::Full) => f.write_str(MASK)?,
-            (Some(host), HostMask::Visible) => write!(f, "{host}")?,
+            (Some(host), HostMask::Visible) => fmt::Display::fmt(host, f)?,
             (None, _) => {}
         }
         if let Some(port) = uri.port() {
@@ -510,17 +520,25 @@ impl fmt::Display for Redacted<'_, SipUri> {
                 .iter()
                 .enumerate()
             {
-                let sep = if i == 0 { '?' } else { '&' };
-                write!(f, "{sep}{name}")?;
+                let sep = if i == 0 { "?" } else { "&" };
+                f.write_str(sep)?;
+                f.write_str(name)?;
                 match value {
-                    Some(_) if how.headers == HeaderMask::Values => write!(f, "={MASK}")?,
-                    Some(v) => write!(f, "={v}")?,
+                    Some(_) if how.headers == HeaderMask::Values => {
+                        f.write_str("=")?;
+                        f.write_str(MASK)?;
+                    }
+                    Some(v) => {
+                        f.write_str("=")?;
+                        f.write_str(v)?;
+                    }
                     None => {}
                 }
             }
         }
         if let Some(frag) = uri.fragment() {
-            write!(f, "#{frag}")?;
+            f.write_str("#")?;
+            f.write_str(frag)?;
         }
         Ok(())
     }
@@ -541,7 +559,8 @@ impl fmt::Display for Redacted<'_, TelUri> {
             true,
         )?;
         if let Some(frag) = uri.fragment() {
-            write!(f, "#{frag}")?;
+            f.write_str("#")?;
+            f.write_str(frag)?;
         }
         Ok(())
     }
@@ -550,10 +569,10 @@ impl fmt::Display for Redacted<'_, TelUri> {
 impl fmt::Display for Redacted<'_, Uri> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.uri {
-            Uri::Sip(u) => write!(f, "{}", u.redacted(self.how)),
-            Uri::Tel(u) => write!(f, "{}", u.redacted(self.how)),
-            Uri::Urn(u) => write!(f, "{}", u.redacted(self.how)),
-            Uri::Other(o) => write!(f, "{}", o.redacted(self.how)),
+            Uri::Sip(u) => fmt::Display::fmt(&u.redacted(self.how), f),
+            Uri::Tel(u) => fmt::Display::fmt(&u.redacted(self.how), f),
+            Uri::Urn(u) => fmt::Display::fmt(&u.redacted(self.how), f),
+            Uri::Other(o) => fmt::Display::fmt(&o.redacted(self.how), f),
         }
     }
 }
@@ -566,13 +585,13 @@ impl fmt::Display for Redacted<'_, UrnUri> {
             self.uri
                 .nid(),
         ) {
-            (OpaqueMask::Visible, _) => write!(f, "{}", self.uri),
+            (OpaqueMask::Visible, _) => fmt::Display::fmt(self.uri, f),
             (OpaqueMask::Masked, Some(_))
                 if self
                     .how
                     .is_public_urn(self.uri) =>
             {
-                write!(f, "{}", self.uri)
+                fmt::Display::fmt(self.uri, f)
             }
             (OpaqueMask::Masked, Some(nid))
                 if self
@@ -580,10 +599,19 @@ impl fmt::Display for Redacted<'_, UrnUri> {
                     .nss()
                     .is_none() =>
             {
-                write!(f, "urn:{nid}")
+                f.write_str("urn:")?;
+                f.write_str(nid)
             }
-            (OpaqueMask::Masked, Some(nid)) => write!(f, "urn:{nid}:{MASK}"),
-            (OpaqueMask::Masked | OpaqueMask::Full, _) => write!(f, "urn:{MASK}"),
+            (OpaqueMask::Masked, Some(nid)) => {
+                f.write_str("urn:")?;
+                f.write_str(nid)?;
+                f.write_str(":")?;
+                f.write_str(MASK)
+            }
+            (OpaqueMask::Masked | OpaqueMask::Full, _) => {
+                f.write_str("urn:")?;
+                f.write_str(MASK)
+            }
         }
     }
 }
@@ -596,7 +624,7 @@ impl fmt::Display for Redacted<'_, OtherUri> {
             self.uri
                 .scheme(),
         ) {
-            (OpaqueMask::Visible, _) => write!(f, "{}", self.uri),
+            (OpaqueMask::Visible, _) => fmt::Display::fmt(self.uri, f),
             (OpaqueMask::Masked, Some(scheme)) => {
                 let rest = self
                     .uri
@@ -614,15 +642,22 @@ impl fmt::Display for Redacted<'_, OtherUri> {
 /// masked; a URI without `//` has no part to locate and is masked whole.
 fn write_masked_other(f: &mut fmt::Formatter<'_>, scheme: &str, rest: &str) -> fmt::Result {
     let Some(hier) = rest.strip_prefix("//") else {
-        return write!(f, "{scheme}:{MASK}");
+        f.write_str(scheme)?;
+        f.write_str(":")?;
+        return f.write_str(MASK);
     };
     let authority_end = hier
         .find(['/', '?', '#'])
         .unwrap_or(hier.len());
     let (authority, tail) = hier.split_at(authority_end);
-    write!(f, "{scheme}://")?;
+    f.write_str(scheme)?;
+    f.write_str("://")?;
     match authority.rsplit_once('@') {
-        Some((_, host)) => write!(f, "{MASK}@{host}")?,
+        Some((_, host)) => {
+            f.write_str(MASK)?;
+            f.write_str("@")?;
+            f.write_str(host)?;
+        }
         None => f.write_str(authority)?,
     }
     let fragment_start = tail
@@ -630,7 +665,11 @@ fn write_masked_other(f: &mut fmt::Formatter<'_>, scheme: &str, rest: &str) -> f
         .unwrap_or(tail.len());
     let (before_fragment, fragment) = tail.split_at(fragment_start);
     match before_fragment.split_once('?') {
-        Some((path, _)) => write!(f, "{path}?{MASK}")?,
+        Some((path, _)) => {
+            f.write_str(path)?;
+            f.write_str("?")?;
+            f.write_str(MASK)?;
+        }
         None => f.write_str(before_fragment)?,
     }
     f.write_str(fragment)
