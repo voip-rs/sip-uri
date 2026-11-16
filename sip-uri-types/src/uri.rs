@@ -1,3 +1,9 @@
+//! The URI sum type and the opaque `Other` value.
+//!
+//! Converting a `Uri` into one variant's type fails with [`KindMismatch`],
+//! which hands the `Uri` back and names both kinds but never its text,
+//! since a user part is often a phone number.
+
 use std::fmt;
 
 use crate::canon;
@@ -237,23 +243,82 @@ impl From<OtherUri> for Uri {
     }
 }
 
-/// `Uri` into a variant's type, the `Uri` handed back when it is another.
-macro_rules! try_from_uri {
-    ($($variant:ident => $ty:ty),*) => {$(
-        impl TryFrom<Uri> for $ty {
-            type Error = Uri;
+/// A [`Uri`] converted into a variant's type it does not hold.
+///
+/// Returned by the [`TryFrom<Uri>`] impls of [`SipUri`], [`TelUri`],
+/// [`UrnUri`] and [`OtherUri`]. Display names the expected and the found
+/// kind, never the URI text.
+///
+/// ```
+/// use sip_uri_types::{SipUri, TelUri, Uri};
+///
+/// let uri = Uri::Tel(TelUri::new("+15551234567"));
+/// let err = SipUri::try_from(uri.clone()).unwrap_err();
+/// assert_eq!(err.to_string(), "expected a SIP URI, found a tel: URI");
+/// assert_eq!(err.into_uri(), uri);
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KindMismatch {
+    expected: &'static str,
+    uri: Uri,
+}
 
-            fn try_from(uri: Uri) -> Result<Self, Uri> {
+impl KindMismatch {
+    /// The URI that was not of the expected kind.
+    pub fn uri(&self) -> &Uri {
+        &self.uri
+    }
+
+    /// The URI that was not of the expected kind, handed back.
+    pub fn into_uri(self) -> Uri {
+        self.uri
+    }
+}
+
+const SIP: &str = "a SIP URI";
+const TEL: &str = "a tel: URI";
+const URN: &str = "a URN";
+const OTHER: &str = "an unrecognized URI";
+
+fn kind(uri: &Uri) -> &'static str {
+    match uri {
+        Uri::Sip(_) => SIP,
+        Uri::Tel(_) => TEL,
+        Uri::Urn(_) => URN,
+        Uri::Other(_) => OTHER,
+    }
+}
+
+impl fmt::Display for KindMismatch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "expected {}, found {}", self.expected, kind(&self.uri))
+    }
+}
+
+impl std::error::Error for KindMismatch {}
+
+/// `Uri` into a variant's type, a [`KindMismatch`] when it is another.
+macro_rules! try_from_uri {
+    ($($variant:ident => $ty:ty, $kind:ident);*) => {$(
+        impl TryFrom<Uri> for $ty {
+            type Error = KindMismatch;
+
+            fn try_from(uri: Uri) -> Result<Self, KindMismatch> {
                 match uri {
                     Uri::$variant(u) => Ok(u),
-                    other => Err(other),
+                    uri => Err(KindMismatch { expected: $kind, uri }),
                 }
             }
         }
     )*};
 }
 
-try_from_uri!(Sip => SipUri, Tel => TelUri, Urn => UrnUri);
+try_from_uri!(
+    Sip => SipUri, SIP;
+    Tel => TelUri, TEL;
+    Urn => UrnUri, URN;
+    Other => OtherUri, OTHER
+);
 
 impl AsRef<str> for OtherUri {
     fn as_ref(&self) -> &str {
@@ -275,6 +340,52 @@ impl fmt::Display for Uri {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Host;
+
+    #[test]
+    fn kind_mismatch_is_an_error_that_hands_the_uri_back() {
+        fn as_sip(uri: Uri) -> Result<SipUri, Box<dyn std::error::Error>> {
+            Ok(SipUri::try_from(uri)?)
+        }
+        let sip =
+            Uri::Sip(SipUri::new(Host::Hostname("example.com".into())).with_user("+15551234567"));
+        let tel = Uri::Tel(TelUri::new("+15551234567"));
+        let urn = Uri::Urn(UrnUri::new("service", "sos"));
+        let other = Uri::Other(OtherUri::new(Some("http"), "//example.com/").unwrap());
+        assert!(as_sip(sip.clone()).is_ok());
+        let err = as_sip(tel.clone()).unwrap_err();
+        assert!(
+            !err.to_string()
+                .contains("5551234567"),
+            "{err}"
+        );
+
+        let cases = [
+            (
+                SipUri::try_from(urn).err(),
+                "expected a SIP URI, found a URN",
+            ),
+            (
+                TelUri::try_from(other.clone()).err(),
+                "expected a tel: URI, found an unrecognized URI",
+            ),
+            (
+                UrnUri::try_from(sip).err(),
+                "expected a URN, found a SIP URI",
+            ),
+            (
+                OtherUri::try_from(tel).err(),
+                "expected an unrecognized URI, found a tel: URI",
+            ),
+        ];
+        for (err, message) in cases {
+            assert_eq!(
+                err.unwrap()
+                    .to_string(),
+                message
+            );
+        }
+    }
 
     #[test]
     fn other_uri_refuses_known_and_invalid_schemes() {
@@ -315,27 +426,19 @@ mod tests {
             let sip = SipUri::try_from(uri.clone()).map(Uri::from);
             let tel = TelUri::try_from(uri.clone()).map(Uri::from);
             let urn = UrnUri::try_from(uri.clone()).map(Uri::from);
-            let results = [sip, tel, urn];
+            let other = OtherUri::try_from(uri.clone()).map(Uri::from);
+            let results = [sip, tel, urn, other];
             for result in &results {
-                assert_eq!(
-                    result
-                        .as_ref()
-                        .unwrap_or_else(|e| e),
-                    &uri
-                );
+                let back = result
+                    .clone()
+                    .unwrap_or_else(KindMismatch::into_uri);
+                assert_eq!(back, uri);
             }
             let matched = results
                 .iter()
                 .filter(|r| r.is_ok())
                 .count();
-            assert_eq!(
-                matched,
-                usize::from(
-                    uri.as_other()
-                        .is_none()
-                ),
-                "{uri}"
-            );
+            assert_eq!(matched, 1, "{uri}");
         }
         let other = OtherUri::new(None, "*").unwrap();
         assert_eq!(AsRef::<str>::as_ref(&other), other.as_str());

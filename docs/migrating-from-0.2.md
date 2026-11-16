@@ -251,7 +251,7 @@ sip-uri parses URIs only (`addr-spec`). `"Alice" <sip:alice@example.com>;tag=abc
 
 ## Also new
 
-- Conversions: `Host` from `Ipv4Addr`, `Ipv6Addr` and `IpAddr`, and `Host::ip()` back; `Uri` from `OtherUri`; `SipUri`, `TelUri` and `UrnUri` through `TryFrom<Uri>`, the `Uri` handed back as the error when it is another kind; `AsRef<str>` on `Hostname` and `OtherUri`; `Scheme::default_port()`; `Parsed::map()` to change the value and keep the warnings.
+- Conversions: `Host` from `Ipv4Addr`, `Ipv6Addr` and `IpAddr`, and `Host::ip()` back; `Uri` from `OtherUri`; `SipUri`, `TelUri`, `UrnUri` and `OtherUri` through `TryFrom<Uri>`, failing with `KindMismatch`, whose `into_uri()` hands the `Uri` back; `AsRef<str>` on `Hostname` and `OtherUri`; `Scheme::default_port()`; `Parsed::map()` to change the value and keep the warnings.
 - A URI is edited in place: `SipUri::with_host()`, and `params_mut()`, `user_params_mut()` and `headers_mut()` on `SipUri` (`params_mut()` on `TelUri`) give the collection, whose `set()`, `remove()` and `retain()` work by case-insensitive name. `set()` replaces the first match in place, removes later ones and appends when absent; every insertion canonizes as the builders do.
 - `Uri` and `Scheme` are exhaustive; 0.2 marked them `#[non_exhaustive]`. A `match` naming every variant needs no `_` arm, and one that has it gets an unreachable-pattern warning. The set is fixed: any other scheme is `Uri::Other`.
 - `SipUri`, `TelUri`, `UrnUri` and `Uri` implement `Hash`, consistent with `Eq`. Both compare the canonical form component by component, never RFC 3261 §19.1.4 equivalence: param order, param and header name case, tel: visual separators and a hostname's trailing dot all count.
