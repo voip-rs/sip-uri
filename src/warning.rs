@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::grammar::validate_pct_encoded;
+use crate::grammar::{validate_pct_encoded, CharClass};
 
 /// A parse result together with the non-conformance found on the way.
 ///
@@ -309,7 +309,7 @@ impl<'a> Warnings<'a> {
     }
 
     /// Warn on the first byte of `part` outside `allowed` or a well-formed escape.
-    pub(crate) fn charset(&mut self, component: Component, part: &str, allowed: fn(u8) -> bool) {
+    pub(crate) fn charset(&mut self, component: Component, part: &str, allowed: CharClass) {
         if let Err(pos) = validate_pct_encoded(part, allowed) {
             let code = if part.as_bytes()[pos] == b'%' {
                 WarningCode::MalformedEscape

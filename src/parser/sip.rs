@@ -90,7 +90,7 @@ fn split_userinfo(
         .filter(|_| colon_starts_password);
     let user_and_params = if let Some(colon_pos) = colon {
         let pwd = &s[colon_pos + 1..];
-        warnings.charset(Component::Password, pwd, grammar::is_password_char);
+        warnings.charset(Component::Password, pwd, grammar::PASSWORD);
         parts.password = Some(pwd.to_string());
         &s[..colon_pos]
     } else {
@@ -110,7 +110,7 @@ fn split_userinfo(
         warnings.push(Component::User, WarningCode::EmptyUser, s, 0);
     }
 
-    warnings.charset(Component::User, user_part, grammar::is_user_char);
+    warnings.charset(Component::User, user_part, grammar::USER);
     if let Some(q) = user_and_params.find('?') {
         warnings.push(
             Component::User,

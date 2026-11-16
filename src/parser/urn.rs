@@ -16,30 +16,6 @@ fn is_valid_nid(nid: &str) -> bool {
             .all(|&b| b.is_ascii_alphanumeric() || b == b'-')
 }
 
-/// RFC 3986 pchar: `unreserved / pct-encoded / sub-delims / ":" / "@"`
-fn is_pchar(b: u8) -> bool {
-    b.is_ascii_alphanumeric()
-        || matches!(
-            b,
-            b'-' | b'.'
-                | b'_'
-                | b'~'
-                | b'!'
-                | b'$'
-                | b'&'
-                | b'\''
-                | b'('
-                | b')'
-                | b'*'
-                | b'+'
-                | b','
-                | b';'
-                | b'='
-                | b':'
-                | b'@'
-        )
-}
-
 pub(crate) fn parse(input: &str) -> Result<Parsed<UrnUri>, ParseError> {
     if input.is_empty() {
         return Err(ParseError::Empty);
@@ -76,7 +52,7 @@ pub(crate) fn parse(input: &str) -> Result<Parsed<UrnUri>, ParseError> {
     // `#` appears in no component, so the first one starts the fragment.
     let before_fragment = match after_nid.split_once('#') {
         Some((before, frag)) => {
-            warnings.charset(Component::FComponent, frag, is_rqf_char);
+            warnings.charset(Component::FComponent, frag, grammar::URN_RQF);
             parts.f_component = Some(frag.to_string());
             before
         }
@@ -106,7 +82,7 @@ pub(crate) fn parse(input: &str) -> Result<Parsed<UrnUri>, ParseError> {
         if nss_str.starts_with('/') {
             warnings.push(Component::Nss, WarningCode::InvalidChar, nss_str, 0);
         } else {
-            warnings.charset(Component::Nss, nss_str, |b| is_pchar(b) || b == b'/');
+            warnings.charset(Component::Nss, nss_str, grammar::URN_NSS);
         }
         parts.nss = Some(nss_str.to_string());
     }
@@ -123,7 +99,7 @@ pub(crate) fn parse(input: &str) -> Result<Parsed<UrnUri>, ParseError> {
             if value.is_empty() {
                 warnings.push(component, WarningCode::EmptyComponent, value, 0);
             }
-            warnings.charset(component, value, is_rqf_char);
+            warnings.charset(component, value, grammar::URN_RQF);
         }
     }
     parts.r_component = r_component.map(str::to_string);
@@ -143,11 +119,6 @@ fn nid_end(s: &str) -> usize {
             _ => false,
         })
         .unwrap_or(bytes.len())
-}
-
-/// RFC 8141: r-, q- and f-components are `*( pchar / "/" / "?" )`.
-fn is_rqf_char(b: u8) -> bool {
-    is_pchar(b) || matches!(b, b'/' | b'?')
 }
 
 /// Split `?+r` and/or `?=q`; the input starts with one of the two.

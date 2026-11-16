@@ -1,6 +1,4 @@
-use crate::grammar::{
-    is_hnv_char, is_param_strict, is_tel_paramchar, is_tel_pname_char, is_user_char,
-};
+use crate::grammar::{CharClass, HNV, PARAM, TEL_PARAMCHAR, TEL_PNAME, USER};
 use crate::warning::{Component, WarningCode, Warnings};
 
 /// Split pairs, as written, for the data crate's constructor to canonize.
@@ -10,29 +8,29 @@ pub(crate) type RawPairs<'a> = Vec<(&'a str, Option<&'a str>)>;
 pub(crate) struct ParamGrammar {
     component: Component,
     /// Conformant names and values; any other byte warns.
-    name: fn(u8) -> bool,
-    value: fn(u8) -> bool,
+    name: CharClass,
+    value: CharClass,
 }
 
 /// SIP URI params after the host.
 pub(crate) const SIP_PARAMS: ParamGrammar = ParamGrammar {
     component: Component::Param,
-    name: is_param_strict,
-    value: is_param_strict,
+    name: PARAM,
+    value: PARAM,
 };
 
 /// SIP user-params inside the userinfo.
 pub(crate) const USER_PARAMS: ParamGrammar = ParamGrammar {
     component: Component::UserParam,
-    name: is_user_char,
-    value: is_user_char,
+    name: USER,
+    value: USER,
 };
 
 /// tel: URI params (RFC 3966).
 pub(crate) const TEL_PARAMS: ParamGrammar = ParamGrammar {
     component: Component::Param,
-    name: is_tel_pname_char,
-    value: is_tel_paramchar,
+    name: TEL_PNAME,
+    value: TEL_PARAMCHAR,
 };
 
 /// Split the params following a `;`, which is not included in `s`.
@@ -87,9 +85,9 @@ pub(crate) fn parse_headers<'a>(s: &'a str, warnings: &mut Warnings) -> RawPairs
         if name.is_empty() {
             warnings.push(Component::Header, WarningCode::EmptyName, part, 0);
         }
-        warnings.charset(Component::Header, name, is_hnv_char);
+        warnings.charset(Component::Header, name, HNV);
         if let Some(value) = value {
-            warnings.charset(Component::Header, value, is_hnv_char);
+            warnings.charset(Component::Header, value, HNV);
         }
         headers.push((name, value));
     }

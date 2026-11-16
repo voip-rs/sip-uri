@@ -28,7 +28,7 @@ pub(crate) fn parse(s: &str) -> Result<Parsed<Uri>, ParseError> {
             return Ok(super::urn::parse(s)?.map(Uri::Urn));
         }
         SchemeSplit::Named(scheme, rest) => {
-            warnings.charset(Component::Other, rest, grammar::is_rfc3986_char);
+            warnings.charset(Component::Other, rest, grammar::RFC3986);
             OtherUri::new(Some(scheme), rest)
         }
         SchemeSplit::Invalid => {

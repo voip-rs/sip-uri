@@ -1,9 +1,17 @@
 //! RFC grammar classes deciding warnings, and the splits the parser makes.
+//!
+//! The `is_*` predicates are the source of truth for each character set.
+//! Scans read them through `CLASSES`, a byte table built from them at
+//! compile time with one bit per set, so a byte's membership is one load.
+//! A new set is a predicate first, then a bit and a row in the table and in
+//! its test, which checks every byte of every set against its predicate.
+//! These sets decide warnings only; sip-uri-types keeps its own literal
+//! sets for canonical form.
 
 /// RFC 3986 §2: `unreserved / reserved`, every character a URI of any
 /// scheme may hold outside a `%XX` escape. A character-set check only: a
 /// delimiter in the wrong place, such as a second `#`, passes.
-pub(crate) fn is_rfc3986_char(c: u8) -> bool {
+const fn is_rfc3986_char(c: u8) -> bool {
     c.is_ascii_alphanumeric()
         || matches!(
             c,
@@ -33,7 +41,7 @@ pub(crate) fn is_rfc3986_char(c: u8) -> bool {
 
 /// RFC 3261 §25: `unreserved = alphanum / mark`
 /// `mark = "-" / "_" / "." / "!" / "~" / "*" / "'" / "(" / ")"`
-pub(crate) fn is_unreserved(c: u8) -> bool {
+const fn is_unreserved(c: u8) -> bool {
     c.is_ascii_alphanumeric()
         || matches!(
             c,
@@ -42,59 +50,141 @@ pub(crate) fn is_unreserved(c: u8) -> bool {
 }
 
 /// RFC 3261 §25: `user-unreserved = "&" / "=" / "+" / "$" / "," / ";" / "?" / "/"`
-fn is_user_unreserved(c: u8) -> bool {
+const fn is_user_unreserved(c: u8) -> bool {
     matches!(c, b'&' | b'=' | b'+' | b'$' | b',' | b';' | b'?' | b'/')
 }
 
 /// RFC 3261 §25: `param-unreserved = "[" / "]" / "/" / ":" / "&" / "+" / "$"`
-fn is_param_unreserved(c: u8) -> bool {
+const fn is_param_unreserved(c: u8) -> bool {
     matches!(c, b'[' | b']' | b'/' | b':' | b'&' | b'+' | b'$')
 }
 
 /// RFC 3261 §25: `hnv-unreserved = "[" / "]" / "/" / "?" / ":" / "+" / "$"`
-fn is_hnv_unreserved(c: u8) -> bool {
+const fn is_hnv_unreserved(c: u8) -> bool {
     matches!(c, b'[' | b']' | b'/' | b'?' | b':' | b'+' | b'$')
 }
 
 /// Characters allowed unescaped in the SIP user component:
 /// unreserved + user-unreserved
-pub(crate) fn is_user_char(c: u8) -> bool {
+const fn is_user_char(c: u8) -> bool {
     is_unreserved(c) || is_user_unreserved(c)
 }
 
 /// Characters allowed unescaped in the password component:
 /// unreserved + "&" / "=" / "+" / "$" / ","
-pub(crate) fn is_password_char(c: u8) -> bool {
+const fn is_password_char(c: u8) -> bool {
     is_unreserved(c) || matches!(c, b'&' | b'=' | b'+' | b'$' | b',')
 }
 
 /// `paramchar` as RFC 3261 §25 writes it: unreserved + param-unreserved.
-pub(crate) fn is_param_strict(c: u8) -> bool {
+const fn is_param_strict(c: u8) -> bool {
     is_unreserved(c) || is_param_unreserved(c)
 }
 
 /// RFC 3966: `pname = 1*( alphanum / "-" )`
-pub(crate) fn is_tel_pname_char(c: u8) -> bool {
+const fn is_tel_pname_char(c: u8) -> bool {
     c.is_ascii_alphanumeric() || c == b'-'
 }
 
 /// RFC 3966: `paramchar = param-unreserved / unreserved / pct-encoded`, whose
 /// `param-unreserved` matches RFC 3261's.
-pub(crate) fn is_tel_paramchar(c: u8) -> bool {
+const fn is_tel_paramchar(c: u8) -> bool {
     is_param_strict(c)
 }
 
 /// Characters allowed unescaped in header names/values:
 /// unreserved + hnv-unreserved
-pub(crate) fn is_hnv_char(c: u8) -> bool {
+const fn is_hnv_char(c: u8) -> bool {
     is_unreserved(c) || is_hnv_unreserved(c)
+}
+
+/// RFC 3986 pchar: `unreserved / pct-encoded / sub-delims / ":" / "@"`
+const fn is_pchar(c: u8) -> bool {
+    c.is_ascii_alphanumeric()
+        || matches!(
+            c,
+            b'-' | b'.'
+                | b'_'
+                | b'~'
+                | b'!'
+                | b'$'
+                | b'&'
+                | b'\''
+                | b'('
+                | b')'
+                | b'*'
+                | b'+'
+                | b','
+                | b';'
+                | b'='
+                | b':'
+                | b'@'
+        )
+}
+
+/// RFC 8141: `NSS = pchar *(pchar / "/")`.
+const fn is_nss_char(c: u8) -> bool {
+    is_pchar(c) || c == b'/'
+}
+
+/// RFC 8141: r-, q- and f-components are `*( pchar / "/" / "?" )`.
+const fn is_rqf_char(c: u8) -> bool {
+    is_pchar(c) || matches!(c, b'/' | b'?')
+}
+
+/// A character set, one bit of [`CLASSES`] each.
+#[derive(Clone, Copy)]
+pub(crate) struct CharClass(u16);
+
+pub(crate) const RFC3986: CharClass = CharClass(1 << 0);
+pub(crate) const USER: CharClass = CharClass(1 << 1);
+pub(crate) const PASSWORD: CharClass = CharClass(1 << 2);
+pub(crate) const PARAM: CharClass = CharClass(1 << 3);
+pub(crate) const TEL_PNAME: CharClass = CharClass(1 << 4);
+pub(crate) const TEL_PARAMCHAR: CharClass = CharClass(1 << 5);
+pub(crate) const HNV: CharClass = CharClass(1 << 6);
+pub(crate) const URN_NSS: CharClass = CharClass(1 << 7);
+pub(crate) const URN_RQF: CharClass = CharClass(1 << 8);
+
+const fn bit(class: CharClass, member: bool) -> u16 {
+    if member {
+        class.0
+    } else {
+        0
+    }
+}
+
+/// The sets each byte belongs to, built from the predicates.
+const CLASSES: [u16; 256] = {
+    let mut table = [0; 256];
+    let mut i = 0;
+    while i < table.len() {
+        let c = i as u8;
+        table[i] = bit(RFC3986, is_rfc3986_char(c))
+            | bit(USER, is_user_char(c))
+            | bit(PASSWORD, is_password_char(c))
+            | bit(PARAM, is_param_strict(c))
+            | bit(TEL_PNAME, is_tel_pname_char(c))
+            | bit(TEL_PARAMCHAR, is_tel_paramchar(c))
+            | bit(HNV, is_hnv_char(c))
+            | bit(URN_NSS, is_nss_char(c))
+            | bit(URN_RQF, is_rqf_char(c));
+        i += 1;
+    }
+    table
+};
+
+impl CharClass {
+    pub(crate) fn holds(self, b: u8) -> bool {
+        CLASSES[b as usize] & self.0 != 0
+    }
 }
 
 pub(crate) const ESCAPE_LEN: usize = 3;
 
 /// Validate that a string contains only valid percent-encoded or allowed characters.
 /// Returns `Err` with the position of the first invalid character.
-pub(crate) fn validate_pct_encoded(input: &str, allowed: fn(u8) -> bool) -> Result<(), usize> {
+pub(crate) fn validate_pct_encoded(input: &str, allowed: CharClass) -> Result<(), usize> {
     let bytes = input.as_bytes();
     let mut i = 0;
 
@@ -109,7 +199,7 @@ pub(crate) fn validate_pct_encoded(input: &str, allowed: fn(u8) -> bool) -> Resu
             }
             return Err(i);
         }
-        if !allowed(bytes[i]) {
+        if !allowed.holds(bytes[i]) {
             return Err(i);
         }
         i += 1;
@@ -228,6 +318,27 @@ mod tests {
                     split_kind(&canonical),
                     "byte {b:#04x}: {raw:?} vs {canonical:?}"
                 );
+            }
+        }
+    }
+
+    #[test]
+    fn class_table_matches_predicates() {
+        type Predicate = fn(u8) -> bool;
+        let classes: [(CharClass, Predicate); 9] = [
+            (RFC3986, is_rfc3986_char),
+            (USER, is_user_char),
+            (PASSWORD, is_password_char),
+            (PARAM, is_param_strict),
+            (TEL_PNAME, is_tel_pname_char),
+            (TEL_PARAMCHAR, is_tel_paramchar),
+            (HNV, is_hnv_char),
+            (URN_NSS, is_nss_char),
+            (URN_RQF, is_rqf_char),
+        ];
+        for (class, predicate) in classes {
+            for b in 0..=u8::MAX {
+                assert_eq!(class.holds(b), predicate(b), "{b:#04x}");
             }
         }
     }
