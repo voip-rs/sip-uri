@@ -178,7 +178,7 @@ fn is_rfc3986_scheme(s: &str) -> bool {
 /// Uses the sofia-sip two-phase algorithm (url.c:616-626): scan to the first
 /// `@/;?#`, then take the first `@` from there on. Everything before it is
 /// userinfo. Without userinfo, a literal `@` in a param or header value is
-/// therefore taken as the delimiter; see docs/design-rationale.md.
+/// therefore taken as the delimiter; see the notes of `parser::sip`.
 pub(crate) fn find_userinfo_at(s: &str) -> Option<usize> {
     let bytes = s.as_bytes();
     let mut i = 0;

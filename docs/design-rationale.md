@@ -24,14 +24,6 @@ The parser never trims whitespace or removes brackets: text it cannot place stay
 
 A warning carries which component broke, a typed code, the byte offset and whether the value survived, but no copy of the offending text. The user part is often a phone number and warnings are what consumers log; the value itself is on the parsed struct for anyone entitled to it. Error messages follow the same rule.
 
-## `@` discovery follows sofia-sip, and a header-shaped user part warns
-
-The user part may carry `;` `?` `/` unescaped, so the delimiter is the first `@` after the first `@/;?#`, as in sofia-sip. Accepting a literal `@` in URI params and headers makes that ambiguous when there is no userinfo: `sip:host?From=a@b` reads as user `host?From=a` at host `b`. That is the only reading valid under the strict grammar, so the parse stands, and a userinfo containing `?` warns so the likely misparse is visible.
-
-## User-params are split out of the user part
-
-The `telephone-subscriber` form in userinfo is split into the user and its `;`-separated params, rather than kept flat as sofia-sip does, because telephony networks carry params such as `cpc` there and consumers need them typed. A caller wanting the unsplit string reconstructs it from both accessors.
-
 ## `param-unreserved` accepts `@` and `,`, with a warning
 
 Real SIP traffic and the sofia-sip torture corpus put both unescaped in URI params. They parse as param characters and are reported, since the grammar does not allow them. The value holds both escaped: a literal `@` in a URI without userinfo reads as the userinfo delimiter, and a literal `,` would make the Display of strictly conformant input fail a strict parse.

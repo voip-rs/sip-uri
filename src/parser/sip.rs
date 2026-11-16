@@ -1,3 +1,18 @@
+//! SIP/SIPS URI parsing.
+//!
+//! The userinfo ends at the first `@` at or after the first `@/;?#`, since
+//! the user part may carry `;?/` unescaped. The scan is sofia-sip's, our
+//! precedent, and it gives the most likely reading of a URI as sent.
+//! Without userinfo, a literal `@` in a param or header value is therefore
+//! taken as the delimiter, so `sip:host?From=a@b` reads as user
+//! `host?From=a` at host `b`: the only reading the strict grammar allows, so
+//! the parse stands and a userinfo holding `?` warns.
+//!
+//! The telephone-subscriber userinfo is split into the user and its
+//! user-params, unlike sofia-sip, because networks carry params such as
+//! `cpc` there and consumers need them typed; a caller wanting the flat
+//! string joins the two accessors.
+
 use super::host::parse_from_uri;
 use super::params::{self, parse_headers, parse_params};
 use crate::error::ParseError;
