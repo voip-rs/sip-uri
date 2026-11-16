@@ -181,7 +181,7 @@ Every field starts absent, the scheme included: without `parts.scheme` the URI p
 
 A constructor given an empty component stores it as absent wherever its delimiter alone would re-parse as nothing: `with_user("")` gives a URI with no user, while `with_password("")` keeps an empty password.
 
-`SipUri::with_user`, `with_password` and `with_fragment`, `TelUri::new` and `with_fragment`, `UrnUri::new`, `with_r_component`, `with_q_component` and `with_f_component`, and the text of `OtherUri::new` take `impl Into<Cow<str>>`, so a `&str` is copied once, escaped as it is copied, and an owned `String` already canonical is held without a copy. `&str` and `String` callers are unaffected; an `Arc<str>` needs `&*s`, a `&&str` needs `*s`, and a custom `AsRef<str>` type needs `.as_ref()`.
+Builders that took `impl Into<String>` in 0.2 (`SipUri::with_user`, `with_password` and `with_fragment`, `TelUri::new` and `with_fragment`, `UrnUri::new`) take `impl AsRef<str>`, like every builder in 0.3, and copy the text, escaping it as they copy. `&str`, `String` and `&String` callers compile unchanged; a `char` or another type that is only `Into<String>` needs `.to_string()`.
 
 ## Params
 

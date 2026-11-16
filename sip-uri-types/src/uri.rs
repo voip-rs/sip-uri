@@ -10,7 +10,6 @@
 //! break a header line are escaped and nothing is decoded: an unknown
 //! scheme's grammar is not ours to normalize.
 
-use std::borrow::Cow;
 use std::fmt;
 
 use crate::canon;
@@ -71,11 +70,9 @@ impl OtherUri {
     /// assert_eq!(uri.as_str(), "https://example.com/a%20b");
     /// assert_eq!(OtherUri::new(Some("sip"), "x"), Err(OtherUriError::TypedScheme));
     /// ```
-    pub fn new<'a>(
-        scheme: Option<&str>,
-        rest: impl Into<Cow<'a, str>>,
-    ) -> Result<Self, OtherUriError> {
-        let rest = rest.into();
+    #[inline]
+    pub fn new(scheme: Option<&str>, rest: impl AsRef<str>) -> Result<Self, OtherUriError> {
+        let rest = rest.as_ref();
         match scheme {
             None if rest.is_empty() => Err(OtherUriError::Empty),
             None => Ok(OtherUri {
@@ -85,21 +82,10 @@ impl OtherUri {
             Some(s) if !canon::is_scheme(s) => Err(OtherUriError::InvalidScheme),
             Some(s) if canon::is_known_scheme(s) => Err(OtherUriError::TypedScheme),
             Some(s) => {
-                let mut raw = match rest {
-                    Cow::Owned(rest) => {
-                        let mut raw = canon::canonize_other(rest);
-                        raw.insert(0, ':');
-                        raw.insert_str(0, s);
-                        raw
-                    }
-                    Cow::Borrowed(rest) => {
-                        let mut raw = String::with_capacity(s.len() + 1 + rest.len());
-                        raw.push_str(s);
-                        raw.push(':');
-                        canon::push_other(&mut raw, rest);
-                        raw
-                    }
-                };
+                let mut raw = String::with_capacity(s.len() + 1 + rest.len());
+                raw.push_str(s);
+                raw.push(':');
+                canon::push_other(&mut raw, rest);
                 if let Some(scheme) = raw.get_mut(..s.len()) {
                     scheme.make_ascii_lowercase();
                 }
@@ -425,30 +411,6 @@ impl fmt::Display for Uri {
 mod tests {
     use super::*;
     use crate::Host;
-
-    #[test]
-    fn new_holds_an_owned_canonical_string() {
-        let rest = String::from("*");
-        let buffer = rest.as_ptr();
-        let bare = OtherUri::new(None, rest).unwrap();
-        assert_eq!(
-            bare.as_str()
-                .as_ptr(),
-            buffer
-        );
-        // The scheme is written in front of the text, in its spare capacity.
-        let mut rest = String::with_capacity(32);
-        rest.push_str("//example.com/a");
-        let buffer = rest.as_ptr();
-        let schemed = OtherUri::new(Some("HTTPS"), rest).unwrap();
-        assert_eq!(
-            schemed
-                .as_str()
-                .as_ptr(),
-            buffer
-        );
-        assert_eq!(schemed.as_str(), "https://example.com/a");
-    }
 
     #[test]
     fn debug_masks_the_password_of_a_hierarchical_userinfo() {
