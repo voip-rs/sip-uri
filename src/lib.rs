@@ -63,3 +63,11 @@ pub use sip_uri_types::{
     UserParams,
 };
 pub use warning::{Component, ParseWarning, Parsed, WarningCode, WarningKind};
+
+#[cfg(all(doctest, feature = "serde"))]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
+
+#[cfg(doctest)]
+#[doc = include_str!("../docs/migrating-from-0.2.md")]
+struct MigrationGuideDoctests;

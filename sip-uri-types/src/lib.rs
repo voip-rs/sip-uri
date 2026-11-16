@@ -77,6 +77,10 @@ pub use tel_uri::{TelUri, TelUriParts};
 pub use uri::{KindMismatch, OtherUri, OtherUriError, Uri};
 pub use urn_uri::{AssignedName, UrnUri, UrnUriParts};
 
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
+
 #[cfg(test)]
 mod tests {
     use super::*;
