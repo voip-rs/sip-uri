@@ -225,6 +225,8 @@ warning_codes! {
     MissingNss => "missing-nss", "missing namespace-specific string";
     /// A URN namespace identifier outside RFC 8141's length or character rules.
     InvalidNid => "invalid-nid", "invalid namespace identifier";
+    /// An IPv6 zone identifier after `%`, which a host cannot hold, dropped.
+    Ipv6Zone => "ipv6-zone", "IPv6 zone identifier dropped";
 }
 
 impl WarningCode {
@@ -247,6 +249,7 @@ impl WarningCode {
             | WarningCode::MissingScheme
             | WarningCode::MissingHost
             | WarningCode::InvalidIpv6
+            | WarningCode::Ipv6Zone
             | WarningCode::InvalidPort
             | WarningCode::TrailingContent
             | WarningCode::EmptyUserinfo

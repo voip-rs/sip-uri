@@ -20,13 +20,14 @@ pub(crate) fn parse_from_uri(s: &str, warnings: &mut Warnings) -> (Option<Host>,
                     .unwrap_or(s.len()),
             );
         };
-        return match inner[..end].parse::<Ipv6Addr>() {
-            Ok(addr) => (Some(Host::Ipv6(addr)), end + 2),
-            Err(_) => {
-                warnings.push(Component::Host, WarningCode::InvalidIpv6, s, 0);
-                (None, end + 2)
-            }
-        };
+        let addr = inner[..end]
+            .parse::<Ipv6Addr>()
+            .ok()
+            .or_else(|| zoned_ipv6(&inner[..end], warnings));
+        if addr.is_none() {
+            warnings.push(Component::Host, WarningCode::InvalidIpv6, s, 0);
+        }
+        return (addr.map(Host::Ipv6), end + 2);
     }
 
     {
@@ -60,7 +61,19 @@ pub(crate) fn parse_from_uri(s: &str, warnings: &mut Warnings) -> (Option<Host>,
     }
 }
 
-/// RFC 3261 §25: `hostname = *( domainlabel "." ) toplabel [ "." ]`, a label
+/// The address of `text` written with a zone (`fe80::1%eth0`, or RFC 6874's
+/// `fe80::1%25eth0` in brackets), the zone dropped with a warning: a host
+/// holds no zone, and reading `fe80` as a hostname names another host.
+fn zoned_ipv6(text: &str, warnings: &mut Warnings) -> Option<Ipv6Addr> {
+    let percent = text.find('%')?;
+    let addr = text[..percent]
+        .parse::<Ipv6Addr>()
+        .ok()?;
+    warnings.push(Component::Host, WarningCode::Ipv6Zone, text, percent);
+    Some(addr)
+}
+
+/// RFC 3261 §25: `hostname =*( domainlabel "." ) toplabel [ "." ]`, a label
 /// neither empty nor hyphen-bounded, the toplabel starting with ALPHA.
 ///
 /// `raw` is the host as written; positions point at its start when it was
@@ -127,7 +140,11 @@ pub(crate) fn parse(s: &str) -> Result<Parsed<Host>, ParseError> {
     // A bare IPv6 has to be recognized up front: the URI parser stops the
     // host at the first `:`, which is inside the address here.
     if !s.starts_with('[') {
-        if let Ok(addr) = s.parse::<Ipv6Addr>() {
+        let addr = s
+            .parse::<Ipv6Addr>()
+            .ok()
+            .or_else(|| zoned_ipv6(s, &mut warnings));
+        if let Some(addr) = addr {
             return Ok(warnings.finish(Host::Ipv6(addr)));
         }
     }
@@ -259,6 +276,41 @@ mod tests {
                 "expected warnings for {input:?}"
             );
         }
+    }
+
+    #[test]
+    fn a_zone_is_dropped_from_an_ipv6_address() {
+        let addr = Host::Ipv6(
+            "fe80::1"
+                .parse()
+                .unwrap(),
+        );
+        for input in ["fe80::1%eth0", "[fe80::1%25eth0]"] {
+            let parsed = Host::parse_with_warnings(input).unwrap();
+            assert_eq!(parsed.value, addr, "{input}");
+            assert_eq!(
+                parsed
+                    .warnings
+                    .len(),
+                1,
+                "{input}"
+            );
+            assert_eq!(parsed.warnings[0].code, WarningCode::Ipv6Zone);
+            assert_eq!(parsed.warnings[0].position, input.find('%'));
+        }
+        let sip = crate::SipUri::parse_with_warnings("sip:alice@[fe80::1%25eth0]:5060").unwrap();
+        assert_eq!(
+            sip.value
+                .host(),
+            Some(&addr)
+        );
+        assert_eq!(
+            sip.value
+                .port(),
+            Some(5060)
+        );
+        assert_eq!(sip.warnings[0].code, WarningCode::Ipv6Zone);
+        assert_eq!(Host::parse("[fe80::zz%1]"), Err(ParseError::NoHost));
     }
 
     #[test]
