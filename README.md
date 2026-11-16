@@ -8,6 +8,8 @@ percent-encoding.
 
 The value types live in [sip-uri-types](https://crates.io/crates/sip-uri-types), which this crate parses into and re-exports. Crates that exchange URIs name `sip_uri_types` in their public APIs; it changes only when a value's identity does, so the surface they share stays small while parse policy here moves freely.
 
+The warning and error vocabulary (`ParseWarning`, `WarningCode`, `WarningKind`, `Component`, `ParseError`) lives in [sip-uri-diagnostics](https://crates.io/crates/sip-uri-diagnostics), also re-exported here. A crate that hands diagnostics to its own callers names them from there: it is a 1.x crate that only grows, a new warning code being a minor release.
+
 ```rust
 use sip_uri::{SipUri, UriParse};
 

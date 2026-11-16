@@ -19,6 +19,8 @@ Which to depend on:
 
 sip-uri-types changes only when a value's identity changes: its components, its canonical form, equality, or Display. Crates that exchange URIs share only that small, slow-moving surface, so sip-uri's parse policy can change without breaking a library that exposes `sip_uri_types::Uri`. Before 0.3, every sip-uri minor was also a breaking release for every crate that exposed a URI.
 
+The warning and error types (`ParseError`, `ParseWarning`, `WarningCode`, `WarningKind`, `Component`) live in [sip-uri-diagnostics](https://crates.io/crates/sip-uri-diagnostics), a 1.x crate that only grows, and sip-uri re-exports them unchanged, so `use sip_uri::ParseWarning` keeps working; a library that names them in its public API depends on `sip-uri-diagnostics`.
+
 ## Parsing is the `UriParse` trait, not `FromStr`
 
 ```rust,ignore
