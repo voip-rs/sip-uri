@@ -119,7 +119,7 @@ impl Component {
         match self {
             Component::Scheme => "scheme",
             Component::User => "user",
-            Component::UserParam => "uparam",
+            Component::UserParam => "user-param",
             Component::Password => "password",
             Component::Host => "host",
             Component::Port => "port",

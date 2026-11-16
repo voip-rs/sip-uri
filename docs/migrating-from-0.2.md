@@ -211,7 +211,7 @@ The collections are opaque types instead of slices of tuples, so their storage c
 
 ## Logging
 
-`Display` writes the user part and password. For logs, use the redacted rendering. By default it masks the whole userinfo (or a tel: number) and every URI header value, since headers such as `P-Asserted-Identity` carry identities; `HeaderMask::Visible` shows headers, `drop_headers()` leaves them out. An `ext` or `isub` takes the user mask. A URN outside the public kinds (`public_urns()`; by default service URNs and `urn:emergency:uid` identifiers) renders as `urn:<nid>:***`, and a URI of another scheme masks its userinfo and query (`https://***@example.com/a?***`), or everything after the scheme without `//`. Hosts and routing params stay visible. `urn()` and `other()` with `OpaqueMask::Visible` show everything, and `host(HostMask::Masked)` or `OpaqueMask::Full` mask further:
+`Display` writes the user part and password. For logs, use the redacted rendering. By default it masks the whole userinfo (or a tel: number) and every URI header value, since headers such as `P-Asserted-Identity` carry identities; `HeaderMask::Visible` shows headers, `drop_headers()` leaves them out. An `ext` or `isub` takes the user mask. A URN outside the public kinds (`public_urns()`; by default service URNs and `urn:emergency:uid` identifiers) renders as `urn:<nid>:***`, and a URI of another scheme masks its userinfo and query (`https://***@example.com/a?***`), or everything after the scheme without `//`. Hosts and routing params stay visible. `urn()` and `other()` with `OpaqueMask::Visible` show everything, and `host(HostMask::Full)` or `OpaqueMask::Full` mask further:
 
 ```rust
 use sip_uri::{HeaderMask, Redaction, SipUri, UriParse, UriRedact, UserMask};

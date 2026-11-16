@@ -265,7 +265,7 @@ input.
 - a URN of a public kind is shown (service URNs such as `urn:service:sos`, `urn:nena:service:…` and `urn:emergency:service:…`, and `urn:emergency:uid:…` call, incident and log identifiers; `public_urns()` sets the list), and any other keeps its NID and masks the rest (`urn:gsma:***`);
 - a hierarchical URI of any other scheme masks its userinfo and query (`https://***@example.com/adr?***`), and one without `//` keeps only its scheme (`mailto:***`, or `***` with no scheme), since no part of it can be located; `OpaqueMask::Visible` shows them.
 
-The default masks only what identifies a person: hosts, routing params, namespaces and schemes are public and stay visible for debugging. It does not chase an identity a sender put where the grammar places none: a number written as a SIP host (`sip:5551234567`) or as a URN NID shows. `host(HostMask::Masked)` masks the host, and `OpaqueMask::Full` masks a URN's NID or another URI's scheme as well.
+The default masks only what identifies a person: hosts, routing params, namespaces and schemes are public and stay visible for debugging. It does not chase an identity a sender put where the grammar places none: a number written as a SIP host (`sip:5551234567`) or as a URN NID shows. `host(HostMask::Full)` masks the host, and `OpaqueMask::Full` masks a URN's NID or another URI's scheme as well.
 
 A `Redaction` owns its policy and clones cheaply, so one built from configuration is stored once and lent to each `redacted(&how)` call. `Debug` writes a password as `***` but the user part as it is.
 

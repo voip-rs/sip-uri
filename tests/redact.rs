@@ -326,8 +326,8 @@ fn off_grammar_positions_are_shown_by_default_and_masked_on_request() {
             .to_string(),
         "sip:5551234567;transport=udp"
     );
-    let masked_host = Redaction::default().host(HostMask::Masked);
-    assert_eq!(masked_host.host_mask(), HostMask::Masked);
+    let masked_host = Redaction::default().host(HostMask::Full);
+    assert_eq!(masked_host.host_mask(), HostMask::Full);
     assert_eq!(
         sip("sip:alice@example.com:5060")
             .redacted(&masked_host)

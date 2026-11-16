@@ -95,7 +95,7 @@ pub enum HostMask {
     /// Shown as Display writes it, even when a sender put a number there.
     Visible,
     /// The host becomes `***`; the port stays.
-    Masked,
+    Full,
 }
 
 /// What a redacted rendering masks.
@@ -109,7 +109,7 @@ pub enum HostMask {
 /// `isub` on a tel: URI or among SIP user-params, part of the subscriber's
 /// number, is masked by the [`UserMask`] as the number is. Hosts and
 /// routing params such as `rn` or `cic` are public and stay shown; a number
-/// a sender put in host or NID position shows unless [`HostMask::Masked`]
+/// a sender put in host or NID position shows unless [`HostMask::Full`]
 /// or [`OpaqueMask::Full`] masks it. A password is `***` under every
 /// [`UserMask`].
 ///
@@ -477,7 +477,7 @@ impl fmt::Display for Redacted<'_, SipUri> {
             }
         }
         match (uri.host(), how.host) {
-            (Some(_), HostMask::Masked) => f.write_str(MASK)?,
+            (Some(_), HostMask::Full) => f.write_str(MASK)?,
             (Some(host), HostMask::Visible) => write!(f, "{host}")?,
             (None, _) => {}
         }
