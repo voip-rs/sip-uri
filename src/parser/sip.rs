@@ -55,11 +55,41 @@ pub(crate) fn parse(input: &str) -> Result<Parsed<SipUri>, ParseError> {
     split_hostport_params_headers(hostport_rest, &mut parts, &mut warnings);
 
     let uri = SipUri::from(parts);
-    // No component survived: the value would print as nothing.
-    if uri == SipUri::from(SipUriParts::default()) {
+    if holds_nothing(&uri) {
         return Err(ParseError::Empty);
     }
     Ok(warnings.finish(uri))
+}
+
+/// No component survived, so the value would print as nothing: equal to
+/// `SipUri::from(SipUriParts::default())`, read without building one.
+fn holds_nothing(uri: &SipUri) -> bool {
+    uri.scheme()
+        .is_none()
+        && uri
+            .user()
+            .is_none()
+        && uri
+            .user_params()
+            .is_empty()
+        && uri
+            .password()
+            .is_none()
+        && uri
+            .host()
+            .is_none()
+        && uri
+            .port()
+            .is_none()
+        && uri
+            .params()
+            .is_empty()
+        && uri
+            .headers()
+            .is_empty()
+        && uri
+            .fragment()
+            .is_none()
 }
 
 /// Split a SIP URI (after scheme:) into optional userinfo and the rest (host onwards).
@@ -258,6 +288,44 @@ mod tests {
         }
         let scheme_only = SipUri::parse("sip:").unwrap();
         assert_eq!(SipUri::parse(&scheme_only.to_string()), Ok(scheme_only));
+    }
+
+    #[test]
+    fn holds_nothing_reads_every_component() {
+        let empty = SipUri::from(SipUriParts::default());
+        assert!(holds_nothing(&empty));
+        let one_component = [
+            empty
+                .clone()
+                .with_scheme(Scheme::Sip),
+            empty
+                .clone()
+                .with_user("u"),
+            empty
+                .clone()
+                .with_user_param("p", None),
+            empty
+                .clone()
+                .with_password("p"),
+            empty
+                .clone()
+                .with_host(Host::Hostname("h".into())),
+            empty
+                .clone()
+                .with_port(5060),
+            empty
+                .clone()
+                .with_param("p", None),
+            empty
+                .clone()
+                .with_header("h", None),
+            empty
+                .clone()
+                .with_fragment("f"),
+        ];
+        for uri in one_component {
+            assert!(!holds_nothing(&uri), "{uri:?}");
+        }
     }
 
     #[test]
