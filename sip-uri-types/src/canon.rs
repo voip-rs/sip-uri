@@ -195,9 +195,24 @@ fn escape_at(bytes: &[u8], i: usize) -> Option<u8> {
 /// `decode` must be a subset of `keep`, which then makes the result
 /// idempotent. A `%` not starting a valid escape is the octet `%`.
 fn canonize(input: &str, decode: Class, keep: Class) -> String {
+    canonize_from(input, canonical_len(input, keep), decode, keep)
+}
+
+/// The length of the prefix of `input` already canonical: no `%`, and
+/// every byte one `keep` holds literal, so ASCII and a char boundary.
+fn canonical_len(input: &str, keep: Class) -> usize {
+    input
+        .bytes()
+        .position(|b| b == b'%' || !keep.holds(b))
+        .unwrap_or(input.len())
+}
+
+/// [`canonize`] of `input` whose first `start` bytes are canonical.
+fn canonize_from(input: &str, start: usize, decode: Class, keep: Class) -> String {
     let bytes = input.as_bytes();
     let mut out = String::with_capacity(bytes.len());
-    let mut i = 0;
+    out.push_str(&input[..start]);
+    let mut i = start;
     while i < bytes.len() {
         match escape_at(bytes, i) {
             Some(b) => {
@@ -213,16 +228,11 @@ fn canonize(input: &str, decode: Class, keep: Class) -> String {
     out
 }
 
-/// [`canonize`], borrowing `input` when it is already canonical: no escape,
-/// and every byte one `keep` holds literal.
+/// [`canonize`], borrowing `input` when it is already canonical.
 fn canonize_cow(input: &str, decode: Class, keep: Class) -> Cow<'_, str> {
-    if input
-        .bytes()
-        .all(|b| b != b'%' && keep.holds(b))
-    {
-        Cow::Borrowed(input)
-    } else {
-        Cow::Owned(canonize(input, decode, keep))
+    match canonical_len(input, keep) {
+        len if len == input.len() => Cow::Borrowed(input),
+        start => Cow::Owned(canonize_from(input, start, decode, keep)),
     }
 }
 
