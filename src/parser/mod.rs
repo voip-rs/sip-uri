@@ -5,8 +5,8 @@ mod tel;
 mod uri;
 mod urn;
 
-use crate::error::ParseError;
 use crate::warning::Parsed;
+use sip_uri_diagnostics::ParseError;
 use sip_uri_types::Host;
 use sip_uri_types::SipUri;
 use sip_uri_types::TelUri;

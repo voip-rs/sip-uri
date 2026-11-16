@@ -1,6 +1,6 @@
 [workspace]
-members = ["sip-uri-types"]
-default-members = [".", "sip-uri-types"]
+members = ["sip-uri-diagnostics", "sip-uri-types"]
+default-members = [".", "sip-uri-diagnostics", "sip-uri-types"]
 
 [workspace.package]
 edition = "2021"
@@ -36,6 +36,7 @@ serde = ["dep:serde", "sip-uri-types/serde"]
 
 [dependencies]
 serde = { version = "1", optional = true }
+sip-uri-diagnostics = { version = "1.0.0", path = "sip-uri-diagnostics" }
 sip-uri-types = { version = "1.0.0", path = "sip-uri-types" }
 
 [dev-dependencies]

@@ -15,9 +15,9 @@
 
 use super::host::parse_from_uri;
 use super::params::{self, parse_headers, parse_params};
-use crate::error::ParseError;
 use crate::grammar::{self, SchemeSplit};
-use crate::warning::{Component, Parsed, WarningCode, Warnings};
+use crate::warning::{Parsed, Warnings};
+use sip_uri_diagnostics::{Component, ParseError, WarningCode};
 use sip_uri_types::{Scheme, SipUri, SipUriParts};
 
 pub(crate) fn parse(input: &str) -> Result<Parsed<SipUri>, ParseError> {

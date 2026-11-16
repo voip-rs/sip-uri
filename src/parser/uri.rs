@@ -5,9 +5,9 @@
 //! even when it reads as `user@host`: only the caller knows its context says
 //! SIP, and it re-parses as `SipUri` for that reading.
 
-use crate::error::ParseError;
 use crate::grammar::{self, SchemeSplit};
-use crate::warning::{Component, Parsed, WarningCode, Warnings};
+use crate::warning::{Parsed, Warnings};
+use sip_uri_diagnostics::{Component, ParseError, WarningCode};
 use sip_uri_types::{OtherUri, OtherUriError, Uri};
 
 pub(crate) fn parse(s: &str) -> Result<Parsed<Uri>, ParseError> {

@@ -1,8 +1,8 @@
 use std::net::Ipv6Addr;
 
-use crate::error::ParseError;
 use crate::grammar::ESCAPE_LEN;
-use crate::warning::{Component, Parsed, WarningCode, Warnings};
+use crate::warning::{Parsed, Warnings};
+use sip_uri_diagnostics::{Component, ParseError, WarningCode};
 use sip_uri_types::Host;
 
 /// Parse a host from a URI string fragment.

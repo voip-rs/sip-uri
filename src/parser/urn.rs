@@ -1,6 +1,6 @@
-use crate::error::ParseError;
 use crate::grammar::{self, SchemeSplit};
-use crate::warning::{Component, Parsed, WarningCode, Warnings};
+use crate::warning::{Parsed, Warnings};
+use sip_uri_diagnostics::{Component, ParseError, WarningCode};
 use sip_uri_types::{UrnUri, UrnUriParts};
 
 const NID_MAX_LEN: usize = 32;

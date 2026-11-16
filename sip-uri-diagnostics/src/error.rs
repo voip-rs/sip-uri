@@ -1,8 +1,10 @@
+//! The one error every sip-uri parser returns.
+
 use std::fmt;
 
-use crate::warning::{ParseWarning, Parsed};
+use crate::ParseWarning;
 
-/// Error returned by every parser in this crate.
+/// Error returned by every sip-uri parser.
 ///
 /// Lenient parsing fails only on [`Empty`](ParseError::Empty),
 /// [`SchemeMismatch`](ParseError::SchemeMismatch) and, for a standalone
@@ -35,17 +37,3 @@ impl fmt::Display for ParseError {
 }
 
 impl std::error::Error for ParseError {}
-
-// qual:allow(coupling, oi) reason: "into_strict needs ParseError; defined here, warning.rs stays free of error.rs"
-impl<T> Parsed<T> {
-    /// The value, or the first warning as [`ParseError::NonConformant`].
-    pub fn into_strict(self) -> Result<T, ParseError> {
-        match self
-            .warnings
-            .first()
-        {
-            Some(w) => Err(ParseError::NonConformant(*w)),
-            None => Ok(self.value),
-        }
-    }
-}

@@ -1,5 +1,6 @@
 use crate::grammar::{CharClass, HNV, PARAM, TEL_PARAMCHAR, TEL_PNAME, USER};
-use crate::warning::{Component, WarningCode, Warnings};
+use crate::warning::Warnings;
+use sip_uri_diagnostics::{Component, WarningCode};
 
 /// Character sets for one kind of `;`-separated param list.
 pub(crate) struct ParamGrammar {
@@ -135,7 +136,7 @@ mod tests {
 
     #[test]
     fn a_pair_the_list_cannot_hold_is_reported_dropped() {
-        use crate::warning::WarningKind;
+        use sip_uri_diagnostics::WarningKind;
         let refuse = |name: &str| name.starts_with('b');
         let s = "a=1;b=2;c";
         let mut w = Warnings::new(s);

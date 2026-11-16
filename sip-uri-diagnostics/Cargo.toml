@@ -1,0 +1,13 @@
+[package]
+name = "sip-uri-diagnostics"
+version = "1.0.0"
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+description = "Warning codes, components and the parse error that sip-uri reports SIP, tel: and URN URI grammar breaches in"
+license.workspace = true
+repository.workspace = true
+documentation = "https://docs.rs/sip-uri-diagnostics"
+readme = "README.md"
+keywords = ["sip", "uri", "voip", "tel", "urn"]
+categories = ["parser-implementations", "network-programming"]

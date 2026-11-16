@@ -6,8 +6,10 @@
 //! re-exported here.
 //!
 //! A crate that only passes URIs around depends on sip-uri-types, whose API
-//! changes only when a value's identity does. This crate holds the policy
-//! that moves more freely: parsing, warnings, redaction and equivalence.
+//! changes only when a value's identity does. A crate that reports parse
+//! diagnostics names them from [`sip_uri_diagnostics`], which only grows;
+//! its items are re-exported here too. This crate holds the policy that
+//! moves more freely: parsing, warning emission, redaction and equivalence.
 //!
 //! Upgrading from 0.2: [`migrating_from_0_2`] lists every breaking change,
 //! why it was made, and the code before and after.
@@ -78,7 +80,6 @@
 #![forbid(unsafe_code)]
 
 mod equivalence;
-mod error;
 mod grammar;
 mod parser;
 mod redact;
@@ -87,9 +88,10 @@ pub mod serde_str;
 mod warning;
 
 pub use equivalence::{ordered_headers_equivalent, UriEquivalence, UriHeaderEquivalence};
-pub use error::ParseError;
 pub use parser::UriParse;
 pub use redact::{HeaderMask, HostMask, OpaqueMask, Redacted, Redaction, UriRedact, UserMask};
+pub use sip_uri_diagnostics;
+pub use sip_uri_diagnostics::{Component, ParseError, ParseWarning, WarningCode, WarningKind};
 pub use sip_uri_types;
 pub use sip_uri_types::encoding;
 pub use sip_uri_types::{
@@ -97,7 +99,7 @@ pub use sip_uri_types::{
     OtherUriError, Pairs, Params, Scheme, SipUri, SipUriParts, TelUri, TelUriParts, Uri, UrnUri,
     UrnUriParts, UserHost, UserParams,
 };
-pub use warning::{Component, ParseWarning, Parsed, WarningCode, WarningKind};
+pub use warning::Parsed;
 
 #[cfg(all(doctest, feature = "serde"))]
 #[doc = include_str!("../README.md")]
