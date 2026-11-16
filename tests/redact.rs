@@ -389,3 +389,14 @@ fn debug_of_a_rendering_is_redacted() {
         r#"Redacted(sip:***@example.com)"#
     );
 }
+
+#[test]
+fn a_rendering_is_copy() {
+    fn copy<T: Copy>(value: T) -> (T, T) {
+        (value, value)
+    }
+    let uri = sip("sip:alice@example.com");
+    let how = Redaction::default();
+    let (a, b) = copy(uri.redacted(&how));
+    assert_eq!(a.to_string(), b.to_string());
+}

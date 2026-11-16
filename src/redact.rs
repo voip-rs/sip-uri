@@ -323,11 +323,19 @@ fn canonical_param_name(name: &str) -> Option<String> {
 
 /// [`fmt::Display`] adapter returned by [`UriRedact::redacted`]. Its Debug
 /// writes the same redacted text, so `{:?}` in a log line leaks nothing.
-#[derive(Clone, Copy)]
 pub struct Redacted<'a, T> {
     uri: &'a T,
     how: &'a Redaction,
 }
+
+/// By hand: a derive would require `T: Copy`, which no URI type is.
+impl<T> Clone for Redacted<'_, T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for Redacted<'_, T> {}
 
 impl<T> fmt::Debug for Redacted<'_, T>
 where
