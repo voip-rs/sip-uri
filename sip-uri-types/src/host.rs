@@ -51,7 +51,7 @@ impl Hostname {
 
 impl From<String> for Hostname {
     fn from(s: String) -> Self {
-        Hostname::from(s.as_str())
+        Hostname(canon::canonize_hostname(s))
     }
 }
 

@@ -193,9 +193,13 @@ fn escape_at(bytes: &[u8], i: usize) -> Option<u8> {
 /// octet in `keep` are written literally, every other octet as uppercase `%XX`.
 ///
 /// `decode` must be a subset of `keep`, which then makes the result
-/// idempotent. A `%` not starting a valid escape is the octet `%`.
-fn canonize(input: &str, decode: Class, keep: Class) -> String {
-    canonize_from(input, canonical_len(input, keep), decode, keep)
+/// idempotent. A `%` not starting a valid escape is the octet `%`. An owned
+/// `input` already canonical is returned as it is, without a copy.
+fn canonize(input: Cow<'_, str>, decode: Class, keep: Class) -> String {
+    match canonical_len(&input, keep) {
+        len if len == input.len() => input.into_owned(),
+        start => canonize_from(&input, start, decode, keep),
+    }
 }
 
 /// The length of the prefix of `input` already canonical: no `%`, and
@@ -264,32 +268,32 @@ fn lowercase_literals(mut s: String) -> String {
 }
 
 /// Canonize a SIP user part or user-param value.
-pub(crate) fn canonize_user(input: &str) -> String {
-    canonize(input, UNRESERVED, USER_OR_HASH)
+pub(crate) fn canonize_user<'a>(input: impl Into<Cow<'a, str>>) -> String {
+    canonize(input.into(), UNRESERVED, USER_OR_HASH)
 }
 
 /// Canonize a user-param name and value.
 pub(crate) fn canonize_user_param(name: &str, value: Option<&str>) -> (String, Option<String>) {
     (
-        canonize(name, UNRESERVED, USER_PARAM_NAME),
+        canonize(name.into(), UNRESERVED, USER_PARAM_NAME),
         value.map(canonize_user),
     )
 }
 
 /// Canonize a password.
-pub(crate) fn canonize_password(input: &str) -> String {
-    canonize(input, UNRESERVED, PASSWORD)
+pub(crate) fn canonize_password<'a>(input: impl Into<Cow<'a, str>>) -> String {
+    canonize(input.into(), UNRESERVED, PASSWORD)
 }
 
 /// Canonize a SIP or tel: param name and value.
 pub(crate) fn canonize_param(name: &str, value: Option<&str>) -> (String, Option<String>) {
-    let one = |s: &str| canonize(s, UNRESERVED, PARAM);
+    let one = |s: &str| canonize(s.into(), UNRESERVED, PARAM);
     (one(name), value.map(one))
 }
 
 /// Canonize a SIP URI header name and value.
 pub(crate) fn canonize_header(name: &str, value: Option<&str>) -> (String, Option<String>) {
-    let one = |s: &str| canonize(s, UNRESERVED, HNV);
+    let one = |s: &str| canonize(s.into(), UNRESERVED, HNV);
     (one(name), value.map(one))
 }
 
@@ -310,28 +314,28 @@ pub(crate) fn header_name(name: &str) -> Cow<'_, str> {
 }
 
 /// Canonize a tel: number.
-pub(crate) fn canonize_tel_number(input: &str) -> String {
-    canonize(input, NEVER, USER_OR_HASH)
+pub(crate) fn canonize_tel_number<'a>(input: impl Into<Cow<'a, str>>) -> String {
+    canonize(input.into(), NEVER, USER_OR_HASH)
 }
 
 /// Canonize a SIP fragment.
-pub(crate) fn canonize_sip_fragment(input: &str) -> String {
-    canonize(input, NEVER, SIP_FRAGMENT)
+pub(crate) fn canonize_sip_fragment<'a>(input: impl Into<Cow<'a, str>>) -> String {
+    canonize(input.into(), NEVER, SIP_FRAGMENT)
 }
 
 /// Canonize a tel: fragment or URN f-component.
-pub(crate) fn canonize_fragment(input: &str) -> String {
-    canonize(input, NEVER, FRAGMENT)
+pub(crate) fn canonize_fragment<'a>(input: impl Into<Cow<'a, str>>) -> String {
+    canonize(input.into(), NEVER, FRAGMENT)
 }
 
 /// Canonize a URN NSS.
-pub(crate) fn canonize_nss(input: &str) -> String {
-    canonize(input, NEVER, NSS)
+pub(crate) fn canonize_nss<'a>(input: impl Into<Cow<'a, str>>) -> String {
+    canonize(input.into(), NEVER, NSS)
 }
 
 /// Canonize a URN r-component.
-pub(crate) fn canonize_urn_r(input: &str) -> String {
-    escape_q_start(canonize(input, NEVER, RQF))
+pub(crate) fn canonize_urn_r<'a>(input: impl Into<Cow<'a, str>>) -> String {
+    escape_q_start(canonize(input.into(), NEVER, RQF))
 }
 
 /// Escape a `?` before `=` in an r-component, since `?=` would start the
@@ -341,18 +345,18 @@ fn escape_q_start(r: String) -> String {
 }
 
 /// Canonize a URN q-component.
-pub(crate) fn canonize_urn_q(input: &str) -> String {
-    canonize(input, NEVER, RQF)
+pub(crate) fn canonize_urn_q<'a>(input: impl Into<Cow<'a, str>>) -> String {
+    canonize(input.into(), NEVER, RQF)
 }
 
 /// Canonize a URN NID, lowercase.
-pub(crate) fn canonize_nid(input: &str) -> String {
-    lowercase_literals(canonize(input, NEVER, LDH))
+pub(crate) fn canonize_nid<'a>(input: impl Into<Cow<'a, str>>) -> String {
+    lowercase_literals(canonize(input.into(), NEVER, LDH))
 }
 
 /// Canonize a hostname, lowercase with uppercase escape hex.
-pub(crate) fn canonize_hostname(input: &str) -> String {
-    lowercase_literals(canonize(input, UNRESERVED, UNRESERVED))
+pub(crate) fn canonize_hostname<'a>(input: impl Into<Cow<'a, str>>) -> String {
+    lowercase_literals(canonize(input.into(), UNRESERVED, UNRESERVED))
 }
 
 /// Octets the text of an unrecognized URI writes literally: any ASCII but
@@ -404,19 +408,19 @@ mod tests {
     #[test]
     fn canonizers_are_idempotent() {
         let fns: [fn(&str) -> String; 14] = [
-            canonize_user,
+            |s| canonize_user(s),
             |s| canonize_user_param(s, None).0,
-            canonize_password,
+            |s| canonize_password(s),
             |s| canonize_param(s, None).0,
             |s| canonize_header(s, None).0,
-            canonize_tel_number,
-            canonize_sip_fragment,
-            canonize_fragment,
-            canonize_nss,
-            canonize_urn_r,
-            canonize_urn_q,
-            canonize_nid,
-            canonize_hostname,
+            |s| canonize_tel_number(s),
+            |s| canonize_sip_fragment(s),
+            |s| canonize_fragment(s),
+            |s| canonize_nss(s),
+            |s| canonize_urn_r(s),
+            |s| canonize_urn_q(s),
+            |s| canonize_nid(s),
+            |s| canonize_hostname(s),
             canonize_other,
         ];
         let input = "aZ%41%3b;=?@#% %zz%e2%9c%93é/:&+$,[]!~*'()";
@@ -451,6 +455,18 @@ mod tests {
             }
         }
         assert!((0..=u8::MAX).all(|b| !NEVER.holds(b)));
+    }
+
+    #[test]
+    fn owned_canonical_input_keeps_its_buffer() {
+        let user = String::from("alice");
+        let buffer = user.as_ptr();
+        let held = canonize_user(user);
+        assert_eq!(held.as_ptr(), buffer);
+        let host = String::from("example.com");
+        let buffer = host.as_ptr();
+        let held = canonize_hostname(host);
+        assert_eq!(held.as_ptr(), buffer);
     }
 
     #[test]

@@ -5,6 +5,7 @@
 //! closure, and a private drop guard re-pairs afterwards, unwinding
 //! included: no caller-held value can be leaked to skip the repair.
 
+use std::borrow::Cow;
 use std::fmt;
 
 use crate::canon;
@@ -72,14 +73,12 @@ impl From<SipUriParts> for SipUri {
             scheme: p.scheme,
             user: hold_user(
                 p.user
-                    .as_deref()
                     .map(canon::canonize_user),
                 &p.user_params,
             ),
             user_params: p.user_params,
             password: p
                 .password
-                .as_deref()
                 .map(canon::canonize_password),
             host: p
                 .host
@@ -89,7 +88,6 @@ impl From<SipUriParts> for SipUri {
             headers: p.headers,
             fragment: p
                 .fragment
-                .as_deref()
                 .and_then(hold_fragment),
         }
     }
@@ -159,7 +157,8 @@ fn hold_host(host: Host) -> Option<Host> {
         .filter(|h| !matches!(h, Host::Hostname(name) if name.as_str().is_empty()))
 }
 
-fn hold_fragment(fragment: &str) -> Option<String> {
+fn hold_fragment<'a>(fragment: impl Into<Cow<'a, str>>) -> Option<String> {
+    let fragment = fragment.into();
     (!fragment.is_empty()).then(|| canon::canonize_sip_fragment(fragment))
 }
 

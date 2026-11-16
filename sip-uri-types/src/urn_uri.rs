@@ -5,6 +5,7 @@
 //! as that empty component, and the rationale's absence rule holds a
 //! component absent only where its delimiter alone re-parses as nothing.
 
+use std::borrow::Cow;
 use std::fmt;
 
 use crate::canon;
@@ -56,33 +57,30 @@ impl From<UrnUriParts> for UrnUri {
         UrnUri {
             nid: p
                 .nid
-                .as_deref()
                 .and_then(hold_nid),
             nss: p
                 .nss
-                .as_deref()
                 .and_then(hold_nss),
             r_component: p
                 .r_component
-                .as_deref()
                 .map(canon::canonize_urn_r),
             q_component: p
                 .q_component
-                .as_deref()
                 .map(canon::canonize_urn_q),
             f_component: p
                 .f_component
-                .as_deref()
                 .map(canon::canonize_fragment),
         }
     }
 }
 
-fn hold_nid(nid: &str) -> Option<String> {
+fn hold_nid<'a>(nid: impl Into<Cow<'a, str>>) -> Option<String> {
+    let nid = nid.into();
     (!nid.is_empty()).then(|| canon::canonize_nid(nid))
 }
 
-fn hold_nss(nss: &str) -> Option<String> {
+fn hold_nss<'a>(nss: impl Into<Cow<'a, str>>) -> Option<String> {
+    let nss = nss.into();
     (!nss.is_empty()).then(|| canon::canonize_nss(nss))
 }
 

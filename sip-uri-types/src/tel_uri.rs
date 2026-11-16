@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt;
 
 use crate::canon;
@@ -42,22 +43,22 @@ impl From<TelUriParts> for TelUri {
         TelUri {
             number: p
                 .number
-                .as_deref()
                 .and_then(hold_number),
             params: p.params,
             fragment: p
                 .fragment
-                .as_deref()
                 .and_then(hold_fragment),
         }
     }
 }
 
-fn hold_number(number: &str) -> Option<String> {
+fn hold_number<'a>(number: impl Into<Cow<'a, str>>) -> Option<String> {
+    let number = number.into();
     (!number.is_empty()).then(|| canon::canonize_tel_number(number))
 }
 
-fn hold_fragment(fragment: &str) -> Option<String> {
+fn hold_fragment<'a>(fragment: impl Into<Cow<'a, str>>) -> Option<String> {
+    let fragment = fragment.into();
     (!fragment.is_empty()).then(|| canon::canonize_fragment(fragment))
 }
 
