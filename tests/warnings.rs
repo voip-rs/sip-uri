@@ -633,3 +633,25 @@ fn every_code_has_a_distinct_kebab_case_name() {
     names.dedup();
     assert_eq!(names.len(), WarningCode::ALL.len());
 }
+
+/// `Parsed::warnings` promises input order, and nothing sorts it: each
+/// parser has to check components left to right.
+#[test]
+fn warnings_come_in_input_order() {
+    fn in_order(warnings: &[ParseWarning]) -> bool {
+        warnings
+            .windows(2)
+            .all(|w| w[0].position <= w[1].position)
+    }
+    for input in ["tel:12 3;a b=1#x y", "tel:;a b=1#x%zz"] {
+        let parsed = TelUri::parse_with_warnings(input).unwrap();
+        assert!(in_order(&parsed.warnings), "{input}: {:?}", parsed.warnings);
+    }
+    let input = "sip:a b;c d:p w@ex ample.com:x;y z?h i#f g";
+    let parsed = SipUri::parse_with_warnings(input).unwrap();
+    assert!(in_order(&parsed.warnings), "{input}: {:?}", parsed.warnings);
+    let Err(sip_uri::ParseError::NonConformant(first)) = SipUri::parse_strict(input) else {
+        panic!("strict parse accepted {input}");
+    };
+    assert_eq!(first.component, Component::User);
+}

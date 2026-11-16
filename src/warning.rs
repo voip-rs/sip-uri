@@ -316,7 +316,17 @@ impl<'a> Warnings<'a> {
         }
     }
 
-    pub(crate) fn finish<T>(self, value: T) -> Parsed<T> {
+    /// The warnings in input order: parsers check components in whatever
+    /// order suits them, and a warning without a position goes last.
+    pub(crate) fn finish<T>(mut self, value: T) -> Parsed<T> {
+        self.list
+            .sort_by_key(|w| {
+                (
+                    w.position
+                        .is_none(),
+                    w.position,
+                )
+            });
         Parsed {
             value,
             warnings: self.list,
