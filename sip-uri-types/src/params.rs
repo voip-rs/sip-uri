@@ -49,6 +49,12 @@ impl DoubleEndedIterator for Pairs<'_> {
 
 impl ExactSizeIterator for Pairs<'_> {}
 
+/// Whether a held name matches `name` ignoring ASCII case, trying the exact
+/// compare first since a name is usually looked up as it is held.
+fn same_name(held: &str, name: &str) -> bool {
+    held == name || held.eq_ignore_ascii_case(name)
+}
+
 /// Push the canonized pair, unless it is a valueless empty name: its bare
 /// delimiter parses as nothing.
 fn push_pair(pairs: &mut Vec<Pair>, name: &str, value: Option<&str>, canonize: Canonize) {
@@ -104,7 +110,7 @@ macro_rules! pair_list {
             pub fn get(&self, name: &str) -> Option<Option<&str>> {
                 let find = |name: &str| {
                     self.iter()
-                        .find(|(n, _)| n.eq_ignore_ascii_case(name))
+                        .find(|(n, _)| same_name(n, name))
                         .map(|(_, v)| v)
                 };
                 if self.0.is_empty() {
@@ -133,7 +139,7 @@ macro_rules! pair_list {
                 let held = self
                     .0
                     .iter()
-                    .any(|(n, _)| n.eq_ignore_ascii_case(name));
+                    .any(|(n, _)| same_name(n, name));
                 let name = if held {
                     Cow::Borrowed(name)
                 } else {
@@ -141,7 +147,7 @@ macro_rules! pair_list {
                 };
                 let before = self.0.len();
                 self.0
-                    .retain(|(n, _)| !n.eq_ignore_ascii_case(&name));
+                    .retain(|(n, _)| !same_name(n, &name));
                 before - self.0.len()
             }
 
@@ -162,7 +168,7 @@ macro_rules! pair_list {
                     return;
                 }
                 let (name, value) = $canonize(name, value);
-                let matches = |n: &String| n.eq_ignore_ascii_case(&name);
+                let matches = |n: &String| same_name(n, &name);
                 let Some(first) = self.0.iter().position(|(n, _)| matches(n)) else {
                     self.0.push((name, value));
                     return;
