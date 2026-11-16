@@ -87,7 +87,7 @@ mod redact;
 pub mod serde_str;
 mod warning;
 
-pub use equivalence::{ordered_headers_equivalent, UriEquivalence, UriHeaderEquivalence};
+pub use equivalence::UriEquivalence;
 pub use parser::UriParse;
 pub use redact::{HeaderMask, HostMask, OpaqueMask, Redacted, Redaction, UriRedact, UserMask};
 pub use sip_uri_diagnostics;
@@ -95,9 +95,9 @@ pub use sip_uri_diagnostics::{Component, ParseError, ParseWarning, WarningCode, 
 pub use sip_uri_types;
 pub use sip_uri_types::encoding;
 pub use sip_uri_types::{
-    AssignedName, Bare, CapacityError, Headers, Host, Hostname, KindMismatch, OtherUri,
-    OtherUriError, Pairs, Params, Scheme, SipUri, SipUriParts, TelUri, TelUriParts, Uri, UrnUri,
-    UrnUriParts, UserHost, UserParams,
+    ordered_headers_equivalent, AssignedName, Bare, CapacityError, Headers, Host, Hostname,
+    KindMismatch, OtherUri, OtherUriError, Pairs, Params, Scheme, SipUri, SipUriParts, TelUri,
+    TelUriParts, Uri, UriHeaderEquivalence, UrnUri, UrnUriParts, UserHost, UserParams,
 };
 pub use warning::Parsed;
 

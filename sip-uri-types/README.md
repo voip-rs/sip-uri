@@ -36,6 +36,7 @@ assert_eq!(tel.number(), Some("+1555%3Bx=1"));
 | `Host`, `Hostname`, `Bare` | IPv4, IPv6 or a canonical hostname; `bare()` renders IPv6 without brackets |
 | `UserHost`, `AssignedName` | `Display` adapters from `SipUri::user_host()` (`user@host:port`) and `UrnUri::assigned_name()` (`urn:NID:NSS`) |
 | `Scheme` | `Sip` or `Sips` |
+| `UriHeaderEquivalence`, `ordered_headers_equivalent` | How two `Headers` sets compare in sip-uri's RFC equivalence: the trait a SIP header parser implements with each field's rules, and the default rule, rows sharing a name in order with exact values (RFC 3261 §7.3.1) |
 | `encoding` | One encoder and one decoder per component a builder takes as text, between logical bytes and the text a builder holds unchanged: `encode_user`, `decode_user`, `encode_header`, … |
 
 ## Canonical form

@@ -16,7 +16,9 @@
 //! names regroup rows, comma-combining compares groups, and a
 //! non-transitive value relation defeats pairing rows one at a time.
 
-use sip_uri_types::{Headers, Params, SipUri, TelUri, Uri, UrnUri};
+use sip_uri_types::{
+    ordered_headers_equivalent, Headers, Params, SipUri, TelUri, Uri, UriHeaderEquivalence, UrnUri,
+};
 
 mod sealed {
     pub trait Sealed {}
@@ -70,40 +72,6 @@ pub trait UriEquivalence: sealed::Sealed {
     fn equivalent_with<H: UriHeaderEquivalence + ?Sized>(&self, other: &Self, headers: &H) -> bool;
 }
 
-/// The header-field matching rules [`UriEquivalence::equivalent_with`]
-/// applies to two SIP URIs' header sets.
-///
-/// RFC 3261 §19.1.4 matches each header by its own field's rules, which a
-/// SIP header parser supplies; [`ordered_headers_equivalent`] is the rule
-/// without them, to fall back on for a field the implementor does not know.
-///
-/// ```
-/// use sip_uri::{SipUri, UriEquivalence, UriHeaderEquivalence, UriParse};
-/// use sip_uri::sip_uri_types::Headers;
-///
-/// struct CaseFolded;
-///
-/// impl UriHeaderEquivalence for CaseFolded {
-///     fn headers_equivalent(&self, a: &Headers, b: &Headers) -> bool {
-///         a.len() == b.len()
-///             && a.iter().zip(b.iter()).all(|((an, av), (bn, bv))| {
-///                 an.eq_ignore_ascii_case(bn)
-///                     && av.map(str::to_ascii_lowercase) == bv.map(str::to_ascii_lowercase)
-///             })
-///     }
-/// }
-///
-/// let a = SipUri::parse("sip:example.com?subject=Lunch").unwrap();
-/// let b = SipUri::parse("sip:example.com?subject=lunch").unwrap();
-/// assert!(!a.equivalent(&b));
-/// assert!(a.equivalent_with(&b, &CaseFolded));
-/// ```
-pub trait UriHeaderEquivalence {
-    /// Whether the header sets `a` and `b` match. Names and values are the
-    /// canonical, percent-encoded text the URI holds.
-    fn headers_equivalent(&self, a: &Headers, b: &Headers) -> bool;
-}
-
 /// [`ordered_headers_equivalent`] as the default comparator.
 struct OrderedHeaders;
 
@@ -153,34 +121,6 @@ fn sip_params_equivalent(a: &Params, b: &Params) -> bool {
             })
     };
     one_way(a, b) && one_way(b, a)
-}
-
-/// URI headers equivalent by RFC 3261 §7.3.1 row order with exact values:
-/// rows with different names in any order, rows sharing a name, compared
-/// ASCII-case-insensitively, in order and with byte-equal canonical values.
-///
-/// This is [`UriEquivalence::equivalent`]'s header rule. It knows no header
-/// field's own matching rules, which RFC 3261 §19.1.4 asks for and a SIP
-/// header parser supplies.
-///
-/// ```
-/// use sip_uri::{ordered_headers_equivalent, SipUri, UriParse};
-///
-/// let headers = |s: &str| SipUri::parse(s).unwrap().headers().clone();
-/// let a = headers("sip:example.com?Route=a&Subject=x&Route=b");
-/// assert!(ordered_headers_equivalent(&a, &headers("sip:example.com?subject=x&route=a&route=b")));
-/// assert!(!ordered_headers_equivalent(&a, &headers("sip:example.com?Route=b&Subject=x&Route=a")));
-/// ```
-pub fn ordered_headers_equivalent(a: &Headers, b: &Headers) -> bool {
-    fn values_named<'a>(list: &'a Headers, name: &str) -> impl Iterator<Item = Option<&'a str>> {
-        let name = name.to_ascii_lowercase();
-        list.iter()
-            .filter(move |(n, _)| n.eq_ignore_ascii_case(&name))
-            .map(|(_, v)| v)
-    }
-    a.len() == b.len()
-        && a.iter()
-            .all(|(name, _)| values_named(a, name).eq(values_named(b, name)))
 }
 
 /// RFC 3966 `visual-separator`.

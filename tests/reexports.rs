@@ -24,3 +24,25 @@ fn diagnostics_resolve_through_both_crates() {
         sip_uri::ParseError::NonConformant(w)
     );
 }
+
+/// Implemented through sip-uri's path, bound through sip-uri-types'.
+struct ViaSipUri;
+
+impl sip_uri::UriHeaderEquivalence for ViaSipUri {
+    fn headers_equivalent(&self, a: &sip_uri::Headers, b: &sip_uri::Headers) -> bool {
+        sip_uri::ordered_headers_equivalent(a, b)
+    }
+}
+
+fn types_rule<H: sip_uri_types::UriHeaderEquivalence>(rules: &H, a: &sip_uri::Headers) -> bool {
+    rules.headers_equivalent(a, a)
+}
+
+#[test]
+fn header_equivalence_resolves_through_both_crates() {
+    let headers = sip_uri_types::Headers::new().with("Subject", Some("x"));
+    assert!(types_rule(&ViaSipUri, &headers));
+    let default: fn(&sip_uri_types::Headers, &sip_uri_types::Headers) -> bool =
+        sip_uri::ordered_headers_equivalent;
+    assert!(default(&headers, &headers));
+}

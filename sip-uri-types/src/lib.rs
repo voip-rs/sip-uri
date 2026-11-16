@@ -53,6 +53,10 @@
 //! visual separators, a hostname's trailing dot and a URN's r-, q- and
 //! f-components all count. RFC equivalence is sip-uri's `UriEquivalence`.
 //!
+//! [`UriHeaderEquivalence`] is the interface by which that comparison
+//! matches two [`Headers`] sets, which a SIP header parser implements with
+//! each field's own rules; [`ordered_headers_equivalent`] is the default.
+//!
 //! # Stability
 //!
 //! The URI kinds with their own type are fixed: a URI with any other scheme
@@ -65,6 +69,7 @@
 #![warn(clippy::undocumented_unsafe_blocks)]
 
 mod canon;
+mod equivalence;
 mod host;
 mod params;
 #[cfg(feature = "serde")]
@@ -75,6 +80,7 @@ mod uri;
 mod urn_uri;
 
 pub use canon::encoding;
+pub use equivalence::{ordered_headers_equivalent, UriHeaderEquivalence};
 pub use host::{Bare, Host, Hostname};
 pub use params::{CapacityError, Headers, Pairs, Params, UserParams};
 pub use sip_uri::{Scheme, SipUri, SipUriParts, UserHost};
