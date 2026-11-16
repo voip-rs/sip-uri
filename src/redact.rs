@@ -163,10 +163,15 @@ impl Default for Redaction {
             urn: OpaqueMask::Masked,
             other: OpaqueMask::Masked,
             host: HostMask::Visible,
-            public_urns: ["service", "nena:service", "emergency:uid"]
-                .into_iter()
-                .map(String::from)
-                .collect(),
+            public_urns: [
+                "service",
+                "nena:service",
+                "emergency:service",
+                "emergency:uid",
+            ]
+            .into_iter()
+            .map(String::from)
+            .collect(),
         }
     }
 }
@@ -198,9 +203,10 @@ impl Redaction {
     /// Show URNs of these kinds in full under [`OpaqueMask::Masked`], in
     /// place of the default list. An entry is a NID (`service`) or a NID with
     /// the leading NSS components of one kind (`nena:service`). The default
-    /// lists `service` and `nena:service` service URNs, and `emergency:uid`
-    /// call, incident and log identifiers. A kind is listed only when no URN
-    /// of it identifies a person.
+    /// lists `service`, `nena:service` and `emergency:service` service URNs,
+    /// and `emergency:uid` call, incident and log identifiers. A kind is
+    /// listed only when no URN of it identifies a person. A URN of a public
+    /// kind is shown whole, its r-, q- and f-components included.
     pub fn public_urns<I, S>(mut self, kinds: I) -> Self
     where
         I: IntoIterator<Item = S>,

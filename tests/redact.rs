@@ -228,6 +228,8 @@ fn public_urn_kinds_are_shown() {
         "urn:nena:service",
         "urn:emergency:uid:callid:TEST1:bcf.example.com",
         "urn:emergency:uid:incidentid:TEST2:psap.example.com",
+        "urn:emergency:service:sos.psap",
+        "urn:emergency:service:responder.police",
     ];
     for text in shown {
         let urn = Uri::parse(text).unwrap();
@@ -242,6 +244,7 @@ fn public_urn_kinds_are_shown() {
         ("urn:nena:companyid:TEST3", "urn:nena:***"),
         ("urn:nena:serviceX:TEST4", "urn:nena:***"),
         ("urn:emergency:other:TEST5", "urn:emergency:***"),
+        ("urn:emergency:serviceX:TEST6", "urn:emergency:***"),
         ("urn:example:TEST-1", "urn:example:***"),
     ];
     for (text, expected) in masked {
