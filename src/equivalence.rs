@@ -27,6 +27,11 @@ mod sealed {
 ///
 /// A param name that appears more than once is compared by its first value.
 ///
+/// SIP equivalence is not transitive: `sip:alice@example.com` is equivalent
+/// to both `;x=1` and `;x=2` forms, which are not equivalent to each other.
+/// It decides whether two URIs name the same resource, so it cannot key a
+/// map or group URIs into classes; `Eq` and `Hash` can.
+///
 /// ```
 /// use sip_uri::{SipUri, UriEquivalence, UriParse};
 ///
