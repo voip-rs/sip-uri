@@ -64,7 +64,17 @@ Display emits the canonical form and is the one serializer, so `parse(display(v)
 
 Display's output is API that no tooling guards: a trait impl cannot be deprecated and semver checks do not read output. A change to what it emits therefore ships only in a breaking release, after the rendering it replaces is available as an adapter.
 
-Display carries the user part and password, so logs use the redacted rendering, never Display. Its default masks the whole userinfo or tel: number, every URI header value, since headers carry identities such as an asserted caller, and everything after a URN's namespace or another URI's scheme, since device identifiers and malformed caller URIs land there; the caller relaxes each: what a log may carry is the deployment's policy, and only a mask that starts closed fails safe. Being policy, redaction lives in sip-uri, not with the value. Debug masks the password, since debug output reaches logs without anyone choosing it.
+## Redaction masks only what identifies a person
+
+Display carries the user part and password, so logs use the redacted rendering, never Display. What a log may carry is the deployment's policy, so redaction lives in sip-uri, not with the value, and every mask is the caller's to relax or tighten. The redacted text is a Display adapter's output, so changing a default mask ships only in a breaking release.
+
+The default masks what identifies a person and leaves what is public visible, since a log that hides the network cannot debug a call: hosts, routing and carrier params, namespaces and schemes name networks and services, not callers. A position is masked when the grammar puts a person's identity there: the userinfo or tel: number with the params that are part of a subscriber's number, and every URI header value, since headers carry identities such as an asserted caller.
+
+Where whether content is personal depends on a registry or a grammar this crate does not parse, the mask starts closed: a URN's NSS shows only when the URN is of a kind on a list of public ones, a kind being a namespace or a subtree of one, since a namespace such as NENA's mixes public service names with kinds this crate has not vetted, and another URI masks the userinfo and query of a hierarchical form, or everything after the scheme when no part can be located.
+
+The default never chases an identity a sender put where the grammar places none, such as a number in host or namespace position: that sender owns the exposure, and masking those positions is an option the caller turns on.
+
+Debug masks the password, and every type's Debug that holds a URI does too, since debug output reaches logs without anyone choosing it.
 
 ## Equality is canonical-structural identity, never RFC equivalence
 

@@ -31,6 +31,10 @@ Single-field error newtypes are exempt, and so are `Uri` and `Scheme`, whose var
 
 ## No `assert!` / `unwrap()` in library code
 
+## Redaction masks only what identifies a person
+
+Before changing a default mask in `src/redact.rs`, adding a masked or public position, or reviewing either, read the rationale's "Redaction masks only what identifies a person" section: public data stays visible, positions whose kind is unknown start masked, off-grammar identities are opt-in, and a default change is breaking.
+
 ## Scope Boundary
 
 URIs only (`addr-spec`), never SIP header field grammar. A test value with percent-encoded header-level params (`;tag=`, `;serviceurn=`) is header grammar leaking in.
