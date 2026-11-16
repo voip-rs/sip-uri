@@ -60,6 +60,6 @@ pub use sip_uri_types::encoding;
 pub use sip_uri_types::{
     AssignedName, Bare, Headers, Host, Hostname, KindMismatch, OtherUri, OtherUriError, Pairs,
     Params, Scheme, SipUri, SipUriParts, TelUri, TelUriParts, Uri, UrnUri, UrnUriParts, UserHost,
-    UserParams, UserParamsMut,
+    UserParams,
 };
 pub use warning::{Component, ParseWarning, Parsed, WarningCode, WarningKind};

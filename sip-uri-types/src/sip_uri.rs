@@ -1,3 +1,10 @@
+//! The SIP/SIPS URI value.
+//!
+//! User-params exist only beside a user, so every path that changes either
+//! goes through `hold_user`. In-place editing of user-params is lent to a
+//! closure, and a private drop guard re-pairs afterwards, unwinding
+//! included: no caller-held value can be leaked to skip the repair.
+
 use std::fmt;
 
 use crate::canon;
@@ -335,13 +342,29 @@ impl SipUri {
         &mut self.params
     }
 
-    /// The user-params, to edit in place; every insertion canonizes.
+    /// Edit the user-params in place through `edit`, returning its result;
+    /// every insertion canonizes.
     ///
-    /// When the guard drops, an absent user becomes empty if user-params
-    /// remain, and an empty one absent if none do, as
+    /// Afterwards, even when `edit` panics, an absent user becomes empty if
+    /// user-params remain, and an empty one absent if none do, as
     /// [`with_user_params`](Self::with_user_params) holds them.
-    pub fn user_params_mut(&mut self) -> UserParamsMut<'_> {
-        UserParamsMut(self)
+    ///
+    /// ```
+    /// use sip_uri_types::{Host, SipUri};
+    ///
+    /// let mut uri = SipUri::new(Host::Hostname("example.com".into()));
+    /// uri.edit_user_params(|p| p.push("cpc", Some("ordinary")));
+    /// assert_eq!(uri.to_string(), "sip:;cpc=ordinary@example.com");
+    /// uri.edit_user_params(|p| p.remove("cpc"));
+    /// assert_eq!(uri.to_string(), "sip:example.com");
+    /// ```
+    pub fn edit_user_params<R>(&mut self, edit: impl FnOnce(&mut UserParams) -> R) -> R {
+        let guard = RepairUser(self);
+        edit(
+            &mut guard
+                .0
+                .user_params,
+        )
     }
 
     /// The URI headers, to edit in place; every insertion canonizes.
@@ -404,30 +427,10 @@ impl SipUri {
     }
 }
 
-/// Mutable access to a [`SipUri`]'s user-params, returned by
-/// [`SipUri::user_params_mut`]; the user part is held again on drop.
-#[derive(Debug)]
-pub struct UserParamsMut<'a>(&'a mut SipUri);
+/// Re-pairs the user with the user-params on drop, unwinding included.
+struct RepairUser<'a>(&'a mut SipUri);
 
-impl std::ops::Deref for UserParamsMut<'_> {
-    type Target = UserParams;
-
-    fn deref(&self) -> &UserParams {
-        &self
-            .0
-            .user_params
-    }
-}
-
-impl std::ops::DerefMut for UserParamsMut<'_> {
-    fn deref_mut(&mut self) -> &mut UserParams {
-        &mut self
-            .0
-            .user_params
-    }
-}
-
-impl Drop for UserParamsMut<'_> {
+impl Drop for RepairUser<'_> {
     fn drop(&mut self) {
         let uri = &mut *self.0;
         uri.user = hold_user(
@@ -502,6 +505,23 @@ impl fmt::Display for SipUri {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn user_params_stay_paired_when_the_edit_panics() {
+        let mut uri = SipUri::new(Host::Hostname("example.com".into()));
+        let edited = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            uri.edit_user_params(|p| {
+                p.push("cpc", Some("x"));
+                panic!("caller's edit fails");
+            })
+        }));
+        assert!(edited.is_err());
+        assert_eq!(uri.user(), Some(""));
+        assert_eq!(
+            uri,
+            SipUri::new(Host::Hostname("example.com".into())).with_user_param("cpc", Some("x"))
+        );
+    }
 
     #[test]
     fn builder() {

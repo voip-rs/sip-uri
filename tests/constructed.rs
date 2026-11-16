@@ -448,16 +448,13 @@ fn sip_values(s: &str) -> Vec<SipUri> {
             .with_user("u")
             .with_host(Host::Hostname(Hostname::from(s))),
         edit(base().with_user_param(s, Some("v")), |u| {
-            u.user_params_mut()
-                .set(s, Some(s));
+            u.edit_user_params(|p| p.set(s, Some(s)));
         }),
         edit(base(), |u| {
-            u.user_params_mut()
-                .set("n", Some(s));
+            u.edit_user_params(|p| p.set("n", Some(s)));
         }),
         edit(base().with_user_param(s, None), |u| {
-            u.user_params_mut()
-                .retain(|_, _| false);
+            u.edit_user_params(|p| p.retain(|_, _| false));
         }),
         edit(
             base()
@@ -487,15 +484,13 @@ fn edits_hold_what_builders_hold() {
     let base = || SipUri::new(host()).with_user("u");
     assert_eq!(
         edit(SipUri::new(host()), |u| {
-            u.user_params_mut()
-                .push("cpc", Some("a b"));
+            u.edit_user_params(|p| p.push("cpc", Some("a b")));
         }),
         SipUri::new(host()).with_user_param("cpc", Some("a b"))
     );
     assert_eq!(
         edit(SipUri::new(host()).with_user_param("cpc", None), |u| {
-            u.user_params_mut()
-                .remove("CPC");
+            u.edit_user_params(|p| p.remove("CPC"));
         }),
         SipUri::new(host())
     );
