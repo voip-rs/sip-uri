@@ -12,7 +12,8 @@ use crate::warning::{ParseWarning, Parsed};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ParseError {
-    /// The input is empty.
+    /// The input is empty, or a SIP URI's input leaves no component, such
+    /// as `:` or `@` alone.
     Empty,
     /// The input's scheme names another kind of URI.
     SchemeMismatch,

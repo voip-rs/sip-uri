@@ -39,7 +39,12 @@ pub(crate) fn parse(input: &str) -> Result<Parsed<SipUri>, ParseError> {
     }
     split_hostport_params_headers(hostport_rest, &mut parts, &mut warnings);
 
-    Ok(warnings.finish(SipUri::from(parts)))
+    let uri = SipUri::from(parts);
+    // No component survived: the value would print as nothing.
+    if uri == SipUri::from(SipUriParts::default()) {
+        return Err(ParseError::Empty);
+    }
+    Ok(warnings.finish(uri))
 }
 
 /// Split a SIP URI (after scheme:) into optional userinfo and the rest (host onwards).
@@ -223,6 +228,15 @@ mod tests {
         let uri = SipUri::parse("sip:u@h").unwrap();
         assert_eq!(uri.user(), Some("u"));
         assert_eq!(uri.host(), Some(&Host::Hostname("h".into())));
+    }
+
+    #[test]
+    fn input_leaving_no_component_is_empty() {
+        for input in [":", "@", ";", "?", "#", ":x", ":%zz"] {
+            assert_eq!(SipUri::parse(input), Err(ParseError::Empty), "{input:?}");
+        }
+        let scheme_only = SipUri::parse("sip:").unwrap();
+        assert_eq!(SipUri::parse(&scheme_only.to_string()), Ok(scheme_only));
     }
 
     #[test]

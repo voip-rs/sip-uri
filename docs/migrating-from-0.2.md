@@ -101,12 +101,13 @@ In 0.3, nearly everything those messages described is a typed `ParseWarning`. Ea
 - the byte offset (`position`);
 - whether the value survived (`WarningKind::Recovered`) or the component was dropped (`WarningKind::Lost`).
 
-That leaves a lenient parse three errors — empty input, another type's scheme, and for `Host` alone no readable host — and a strict one a fourth:
+That leaves a lenient parse three errors — empty input (which for `SipUri` includes input such as `:` or `@` that leaves no component), another type's scheme, and for `Host` alone no readable host — and a strict one a fourth:
 
 ```rust,ignore
 #[non_exhaustive]
 pub enum ParseError {
-    /// The input is empty.
+    /// The input is empty, or a SIP URI's input leaves no component, such
+    /// as `:` or `@` alone.
     Empty,
     /// The input's scheme names another kind of URI.
     SchemeMismatch,

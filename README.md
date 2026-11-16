@@ -58,6 +58,7 @@ exceptions re-parse as another reading or none:
 - an `Other` whose text after the scheme reads as a port
 - a tel: fragment with no params before it, whose `#` reads as a phone digit
 - a `Host::Hostname` on its own that is empty or reads as an IPv4 address
+- a `SipUri` built with no component, which prints as nothing
 
 ## SipUri
 
@@ -232,8 +233,9 @@ returns what it could read, and `parse_with_warnings` reports each breach as a
 typed `ParseWarning` (component, code, byte position, whether the value
 survived). A missing or unreadable scheme, host, port, number, NID or NSS is
 `None` with a warning. The only errors are empty input, a scheme that belongs
-to another type (`tel:` parsed as `SipUri`), and, for `Host` alone, input with
-no readable host; `Uri` keeps anything else as `Other`. `parse` accepts exactly
+to another type (`tel:` parsed as `SipUri`), for `Host` alone input with no
+readable host, and for `SipUri` input that leaves no component, such as `@`;
+`Uri` keeps anything else as `Other`. `parse` accepts exactly
 the same input and drops the warnings.
 Warnings never quote the input, since a user part often holds a phone number.
 

@@ -20,9 +20,9 @@ mod sealed {
 /// Parsing for the URI and host types.
 ///
 /// All three methods run one parser. The lenient ones fail only on empty
-/// input, a scheme belonging to another type, or, for [`Host`], input with
-/// no readable host; [`UriParse::parse_strict`] also fails on the first
-/// grammar breach.
+/// input, a scheme belonging to another type, for [`Host`] input with no
+/// readable host, and for [`SipUri`] input that leaves no component;
+/// [`UriParse::parse_strict`] also fails on the first grammar breach.
 ///
 /// - [`Uri`] accepts everything but empty input. Input without a scheme, or
 ///   with one outside the RFC 3986 grammar such as a URI still wrapped in
