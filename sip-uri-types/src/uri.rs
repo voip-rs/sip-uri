@@ -247,14 +247,15 @@ impl From<OtherUri> for Uri {
 ///
 /// Returned by the [`TryFrom<Uri>`] impls of [`SipUri`], [`TelUri`],
 /// [`UrnUri`] and [`OtherUri`]. Display names the expected and the found
-/// kind, never the URI text.
+/// kind, never the URI text; its wording is for people and may change in a
+/// minor release, so code matches on [`uri`](Self::uri) instead.
 ///
 /// ```
 /// use sip_uri_types::{SipUri, TelUri, Uri};
 ///
 /// let uri = Uri::Tel(TelUri::new("+15551234567"));
 /// let err = SipUri::try_from(uri.clone()).unwrap_err();
-/// assert_eq!(err.to_string(), "expected a SIP URI, found a tel: URI");
+/// assert!(err.uri().as_tel().is_some());
 /// assert_eq!(err.into_uri(), uri);
 /// ```
 #[derive(Clone, PartialEq, Eq, Hash)]

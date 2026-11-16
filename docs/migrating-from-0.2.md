@@ -84,6 +84,8 @@ if parsed.has_warnings() {
 }
 ```
 
+`Uri::parse_strict` also checks the text of a URI with an unrecognized scheme against RFC 3986's character set, so an `http:` link holding a space, `|`, `{}` or non-ASCII is refused where 0.3.0-rc.2 accepted it; `parse` still keeps it as `Uri::Other`.
+
 `Parsed::into_strict()` does the same after the fact. The strict parser runs the lenient one and checks its warnings, so both accept and read input the same way; they differ only in what they return.
 
 ## One `ParseError` replaces the six error types
@@ -253,7 +255,7 @@ sip-uri parses URIs only (`addr-spec`). `"Alice" <sip:alice@example.com>;tag=abc
 ## Also new
 
 - Conversions: `Host` from `Ipv4Addr`, `Ipv6Addr` and `IpAddr`, and `Host::ip()` back; `Uri` from `OtherUri`; `SipUri`, `TelUri`, `UrnUri` and `OtherUri` through `TryFrom<Uri>`, failing with `KindMismatch`, whose `into_uri()` hands the `Uri` back; `AsRef<str>` on `Hostname` and `OtherUri`; `Scheme::default_port()`; `Parsed::map()` to change the value and keep the warnings.
-- A URI is edited in place: `SipUri::with_host()`, and `params_mut()` and `headers_mut()` on `SipUri` (`params_mut()` on `TelUri`) give the collection, `SipUri::edit_user_params()` lends the user-params to a closure and re-pairs them with the user afterwards, whose `set()`, `remove()` and `retain()` work by case-insensitive name. `set()` replaces the first match in place, removes later ones and appends when absent; every insertion canonizes as the builders do.
+- A URI is edited in place: `params_mut()` and `headers_mut()` on `SipUri` (`params_mut()` on `TelUri`) give the collection, and `SipUri::edit_user_params()` lends the user-params to a closure and re-pairs them with the user afterwards. Each collection's `set()`, `remove()` and `retain()` work by case-insensitive name. `set()` replaces the first match in place, removes later ones and appends when absent; every insertion canonizes as the builders do. `SipUri::with_host()` replaces the host on a value it consumes, as the other builders do.
 - `Uri` and `Scheme` are exhaustive; 0.2 marked them `#[non_exhaustive]`. A `match` naming every variant needs no `_` arm, and one that has it gets an unreachable-pattern warning. The set is fixed: any other scheme is `Uri::Other`.
 - `SipUri`, `TelUri`, `UrnUri` and `Uri` implement `Hash`, consistent with `Eq`. Both compare the canonical form component by component, never RFC 3261 §19.1.4 equivalence: param order, param and header name case, tel: visual separators and a hostname's trailing dot all count.
 - `UriEquivalence::equivalent` compares URIs as RFC 3261 §19.1.4, RFC 3966 §4 and RFC 8141 §3 define equivalence: `sip:%61lice@example.com;transport=TCP` is equivalent to, though not `==`, `sip:alice@EXAMPLE.com;Transport=tcp`.

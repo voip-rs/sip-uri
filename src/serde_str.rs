@@ -3,7 +3,8 @@
 //!
 //! Use one with `#[serde(with = …)]`, or its `option` submodule for an
 //! `Option` field. A read that fails reports the [`ParseError`], or the type
-//! it expected, never the value it read.
+//! it expected, never the value it read. A `SipUri` built with no component
+//! writes as `""`, which reads back as [`ParseError::Empty`].
 //!
 //! ```
 //! # use serde::{Deserialize, Serialize};

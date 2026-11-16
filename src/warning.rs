@@ -162,9 +162,11 @@ macro_rules! warning_codes {
 
 warning_codes! {
     /// A character outside the component's character set, held as its
-    /// escaped octet.
+    /// escaped octet. In [`Component::Other`] only a byte that would break a
+    /// header line is escaped; any other is held as sent.
     InvalidChar => "invalid-char", "invalid character";
-    /// A `%` not followed by two hex digits, held as the octet `%`, `%25`.
+    /// A `%` not followed by two hex digits, held as the octet `%`, `%25`,
+    /// except in [`Component::Other`], which holds it as sent.
     MalformedEscape => "malformed-escape", "malformed percent-escape";
     /// A parameter with no name before `=`.
     EmptyName => "empty-name", "empty parameter name";

@@ -124,7 +124,6 @@ pub enum HostMask {
 /// );
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
 pub struct Redaction {
     user: UserMask,
     headers: HeaderMask,

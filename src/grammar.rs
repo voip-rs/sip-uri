@@ -1,7 +1,8 @@
 //! RFC grammar classes deciding warnings, and the splits the parser makes.
 
 /// RFC 3986 §2: `unreserved / reserved`, every character a URI of any
-/// scheme may hold outside a `%XX` escape.
+/// scheme may hold outside a `%XX` escape. A character-set check only: a
+/// delimiter in the wrong place, such as a second `#`, passes.
 pub(crate) fn is_rfc3986_char(c: u8) -> bool {
     c.is_ascii_alphanumeric()
         || matches!(
