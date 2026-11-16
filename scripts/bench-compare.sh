@@ -29,8 +29,6 @@ if ! test -f "$worktree/benches/count.rs"; then
     rm -rf "$worktree/benches"
     cp -r "$root/benches" "$worktree/"
     sed -n '/^\[\[bench\]\]$/,$p' "$root/Cargo.toml" >> "$worktree/Cargo.toml"
-    grep -q '^criterion' "$worktree/Cargo.toml" \
-        || sed -i "s/^\[dev-dependencies\]$/&\n$(grep '^criterion' "$root/Cargo.toml" | sed 's/[&/]/\\&/g')/" "$worktree/Cargo.toml"
 fi
 
 # Path of the count benchmark built in directory $1.
