@@ -9,6 +9,9 @@
 //! changes only when a value's identity does. This crate holds the policy
 //! that moves more freely: parsing, warnings, redaction and equivalence.
 //!
+//! Upgrading from 0.2: [`migrating_from_0_2`] lists every breaking change,
+//! why it was made, and the code before and after.
+//!
 //! # Parsing and warnings
 //!
 //! [`UriParse`] parses text in three modes on one path.
@@ -100,6 +103,5 @@ pub use warning::{Component, ParseWarning, Parsed, WarningCode, WarningKind};
 #[doc = include_str!("../README.md")]
 struct ReadmeDoctests;
 
-#[cfg(doctest)]
 #[doc = include_str!("../docs/migrating-from-0.2.md")]
-struct MigrationGuideDoctests;
+pub mod migrating_from_0_2 {}

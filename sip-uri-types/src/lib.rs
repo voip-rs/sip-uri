@@ -2,6 +2,10 @@
 //!
 //! Parse text into these types with [sip-uri](https://docs.rs/sip-uri).
 //!
+//! These types were sip-uri's own until 0.2; code written against them there
+//! migrates with sip-uri's
+//! [guide](https://docs.rs/sip-uri/latest/sip_uri/migrating_from_0_2/index.html).
+//!
 //! The `serde` feature serializes each value as its parts, and deserializes
 //! them through the same canonizing constructor as [`From`] a parts struct.
 //! A [`Host`] reads a hostname through [`Host::from_hostname`]. The shape is
