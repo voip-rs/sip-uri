@@ -26,7 +26,7 @@ pub enum ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ParseError::Empty => f.write_str("empty input"),
+            ParseError::Empty => f.write_str("nothing to read"),
             ParseError::SchemeMismatch => f.write_str("scheme belongs to another URI type"),
             ParseError::NoHost => f.write_str("no readable host"),
             ParseError::NonConformant(w) => write!(f, "non-conformant URI: {w}"),
