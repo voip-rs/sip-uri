@@ -83,7 +83,7 @@ mod redact;
 pub mod serde_str;
 mod warning;
 
-pub use equivalence::UriEquivalence;
+pub use equivalence::{ordered_headers_equivalent, UriEquivalence};
 pub use error::ParseError;
 pub use parser::UriParse;
 pub use redact::{HeaderMask, HostMask, OpaqueMask, Redacted, Redaction, UriRedact, UserMask};

@@ -78,7 +78,8 @@ fn sip_params_compared_when_only_one_side_has_them() {
         "sip:alice;CPC=x@example.com",
         false,
     );
-    check::<SipUri>("sip:example.com?h=A&h=b", "sip:example.com?H=b&h=A", true);
+    check::<SipUri>("sip:example.com?h=A&h=b", "sip:example.com?H=A&h=b", true);
+    check::<SipUri>("sip:example.com?h=A&h=b", "sip:example.com?H=b&h=A", false);
     check::<SipUri>("sip:example.com?h=A", "sip:example.com?h=a", false);
 }
 
@@ -140,4 +141,21 @@ fn uri_compares_within_one_variant() {
     check::<Uri>("urn:service:sos", "URN:Service:sos", true);
     check::<Uri>("https://example.com", "HTTPS://example.com", true);
     check::<Uri>("sip:+15551234567@example.com", "tel:+15551234567", false);
+}
+
+/// RFC 3261 §7.3.1: rows with the same name keep their order, other rows
+/// may move.
+#[test]
+fn same_name_headers_compare_in_order() {
+    check::<SipUri>(
+        "sip:example.com?Route=a&Subject=x&Route=b",
+        "sip:example.com?subject=x&route=a&route=b",
+        true,
+    );
+    check::<SipUri>(
+        "sip:example.com?Route=a&Route=b",
+        "sip:example.com?Route=b&Route=a",
+        false,
+    );
+    check::<SipUri>("sip:example.com?A=1&A=1", "sip:example.com?A=1", false);
 }

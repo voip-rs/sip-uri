@@ -21,9 +21,9 @@ mod sealed {
 ///   never matching one written, even 5060. A `user`, `ttl`, `method`,
 ///   `maddr` or `transport` param must match when either URI has it; any
 ///   other param is compared only when both have it. Param names and values
-///   compare case-insensitively and in any order. Headers must match as a
-///   multiset, names case-insensitively and values exactly. Fragments, which
-///   RFC 3261 does not define, must match exactly.
+///   compare case-insensitively and in any order. Headers match by
+///   [`ordered_headers_equivalent`]: rows sharing a name in order, values
+///   exactly. Fragments, which RFC 3261 does not define, must match exactly.
 /// - [`TelUri`], RFC 3966 §4: the numbers match with visual separators
 ///   removed, case-insensitively; every param must be in both, in any order,
 ///   names and values case-insensitive. An `ext` value, or a `phone-context`
@@ -71,7 +71,7 @@ impl UriEquivalence for SipUri {
             && self.host() == other.host()
             && self.port() == other.port()
             && sip_params_equivalent(self.params(), other.params())
-            && headers_equivalent(self.headers(), other.headers())
+            && ordered_headers_equivalent(self.headers(), other.headers())
             && self.fragment() == other.fragment()
     }
 }
@@ -96,22 +96,32 @@ fn sip_params_equivalent(a: &Params, b: &Params) -> bool {
     one_way(a, b) && one_way(b, a)
 }
 
-fn headers_equivalent(a: &Headers, b: &Headers) -> bool {
-    if a.len() != b.len() {
-        return false;
+/// URI headers equivalent by RFC 3261 §7.3.1 row order with exact values:
+/// rows with different names in any order, rows sharing a name, compared
+/// ASCII-case-insensitively, in order and with byte-equal canonical values.
+///
+/// This is [`UriEquivalence::equivalent`]'s header rule. It knows no header
+/// field's own matching rules, which RFC 3261 §19.1.4 asks for and a SIP
+/// header parser supplies.
+///
+/// ```
+/// use sip_uri::{ordered_headers_equivalent, SipUri, UriParse};
+///
+/// let headers = |s: &str| SipUri::parse(s).unwrap().headers().clone();
+/// let a = headers("sip:example.com?Route=a&Subject=x&Route=b");
+/// assert!(ordered_headers_equivalent(&a, &headers("sip:example.com?subject=x&route=a&route=b")));
+/// assert!(!ordered_headers_equivalent(&a, &headers("sip:example.com?Route=b&Subject=x&Route=a")));
+/// ```
+pub fn ordered_headers_equivalent(a: &Headers, b: &Headers) -> bool {
+    fn values_named<'a>(list: &'a Headers, name: &str) -> impl Iterator<Item = Option<&'a str>> {
+        let name = name.to_ascii_lowercase();
+        list.iter()
+            .filter(move |(n, _)| n.eq_ignore_ascii_case(&name))
+            .map(|(_, v)| v)
     }
-    let mut unmatched: Vec<_> = b
-        .iter()
-        .collect();
-    a.iter()
-        .all(|(name, value)| {
-            let found = unmatched
-                .iter()
-                .position(|(n, v)| n.eq_ignore_ascii_case(name) && *v == value);
-            found
-                .map(|i| unmatched.swap_remove(i))
-                .is_some()
-        })
+    a.len() == b.len()
+        && a.iter()
+            .all(|(name, _)| values_named(a, name).eq(values_named(b, name)))
 }
 
 /// RFC 3966 `visual-separator`.
