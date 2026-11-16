@@ -45,7 +45,7 @@ pub enum Uri {
 
 /// Text kept as sent except for its scheme, which is lowercased, and the
 /// bytes [`OtherUri::new`] escapes.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct OtherUri {
     raw: String,
     scheme_end: Option<usize>,
@@ -131,6 +131,43 @@ impl std::error::Error for OtherUriError {}
 impl fmt::Display for OtherUri {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.raw)
+    }
+}
+
+/// The text with the password of a `scheme://user:password@` userinfo
+/// written as `***`, as [`SipUri`]'s Debug masks its password.
+impl fmt::Debug for OtherUri {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let text = match self.password_span() {
+            Some((start, end)) => {
+                std::borrow::Cow::Owned(format!("{}***{}", &self.raw[..start], &self.raw[end..]))
+            }
+            None => std::borrow::Cow::Borrowed(
+                self.raw
+                    .as_str(),
+            ),
+        };
+        write!(f, "OtherUri({text:?})")
+    }
+}
+
+impl OtherUri {
+    /// Byte range of the password in `scheme://user:password@host…`.
+    fn password_span(&self) -> Option<(usize, usize)> {
+        let authority_start = self.scheme_end? + "://".len();
+        let authority = self
+            .raw
+            .get(self.scheme_end? + 1..)?
+            .strip_prefix("//")?;
+        let authority = authority
+            .find(['/', '?', '#'])
+            .map_or(authority, |end| &authority[..end]);
+        let userinfo = &authority[..authority.rfind('@')?];
+        let colon = userinfo.find(':')?;
+        Some((
+            authority_start + colon + 1,
+            authority_start + userinfo.len(),
+        ))
     }
 }
 
@@ -359,6 +396,38 @@ impl fmt::Display for Uri {
 mod tests {
     use super::*;
     use crate::Host;
+
+    #[test]
+    fn debug_masks_the_password_of_a_hierarchical_userinfo() {
+        let other = |s: &str, r: &str| OtherUri::new(Some(s), r).unwrap();
+        let cases = [
+            (
+                other("https", "//alice:secret@example.com/a?b"),
+                r#"OtherUri("https://alice:***@example.com/a?b")"#,
+            ),
+            (
+                other("https", "//alice@example.com/"),
+                r#"OtherUri("https://alice@example.com/")"#,
+            ),
+            (
+                other("https", "//example.com/a:b@c"),
+                r#"OtherUri("https://example.com/a:b@c")"#,
+            ),
+            (
+                other("mailto", "alice:x@example.com"),
+                r#"OtherUri("mailto:alice:x@example.com")"#,
+            ),
+            (
+                OtherUri::new(None, "a:b@c").unwrap(),
+                r#"OtherUri("a:b@c")"#,
+            ),
+        ];
+        for (uri, debug) in cases {
+            assert_eq!(format!("{uri:?}"), debug);
+        }
+        let uri = Uri::Other(other("https", "//alice:secret@example.com/"));
+        assert!(!format!("{uri:?}").contains("secret"));
+    }
 
     #[test]
     fn kind_mismatch_is_an_error_that_hands_the_uri_back() {

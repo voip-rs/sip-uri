@@ -448,7 +448,11 @@ pub struct UserHost<'a>(&'a SipUri);
 impl fmt::Display for UserHost<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let uri = self.0;
-        if let Some(ref user) = uri.user {
+        if let Some(user) = uri
+            .user
+            .as_deref()
+            .filter(|u| !u.is_empty())
+        {
             write!(f, "{user}@")?;
         }
         if let Some(ref host) = uri.host {
@@ -505,6 +509,30 @@ impl fmt::Display for SipUri {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn user_host_writes_no_bare_at() {
+        let host = || Host::Hostname("example.com".into());
+        let params_only = SipUri::new(host()).with_user_param("cpc", Some("x"));
+        assert_eq!(
+            params_only
+                .user()
+                .map(str::len),
+            Some(0)
+        );
+        assert_eq!(
+            params_only
+                .user_host()
+                .to_string(),
+            "example.com"
+        );
+        let user = SipUri::new(host()).with_user("alice");
+        assert_eq!(
+            user.user_host()
+                .to_string(),
+            "alice@example.com"
+        );
+    }
 
     #[test]
     fn user_params_stay_paired_when_the_edit_panics() {
