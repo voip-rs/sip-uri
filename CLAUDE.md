@@ -33,7 +33,7 @@ Single-field error newtypes are exempt, and so are `Uri` and `Scheme`, whose var
 
 ## Redaction masks only what identifies a person
 
-Before changing a default mask in `src/redact.rs`, adding a masked or public position, or reviewing either, read the rationale's "Redaction masks only what identifies a person" section: public data stays visible, positions whose kind is unknown start masked, off-grammar identities are opt-in, and a default change is breaking.
+Before changing a default mask in `src/redact.rs`, adding a masked or public position, or reviewing either, read the notes at the top of `src/redact.rs`: public data stays visible, positions whose kind is unknown start masked, off-grammar identities are opt-in, and a default change is breaking.
 
 ## Scope Boundary
 

@@ -1,11 +1,31 @@
 //! Rendering a URI for logs.
 //!
-//! The defaults follow the rationale's "Redaction masks only what
-//! identifies a person": a position the grammar gives a person's identity
-//! is masked, public data stays, a position whose content this crate cannot
-//! classify starts masked, and an identity a sender put off-grammar is
-//! masked only on request. Every default is Display output of the adapter,
-//! so changing one is a breaking release.
+//! Display carries the user part and password, so logs use this rendering,
+//! never Display. What a log may carry is the deployment's policy, so
+//! redaction lives here, not with the value, and every mask is the caller's
+//! to relax or tighten. The redacted text is a Display adapter's output, so
+//! changing a default mask ships only in a breaking release.
+//!
+//! The default masks only what identifies a person and leaves what is
+//! public visible, since a log that hides the network cannot debug a call:
+//! hosts, routing and carrier params, namespaces and schemes name networks
+//! and services, not callers. A position is masked when the grammar puts a
+//! person's identity there: the userinfo or tel: number with the params that
+//! are part of a subscriber's number, and every URI header value, since
+//! headers carry identities such as an asserted caller.
+//!
+//! Where whether content is personal depends on a registry or a grammar
+//! this crate does not parse, the mask starts closed. A URN's NSS shows only
+//! when the URN is of a kind on the public list, a kind being a namespace or
+//! a subtree of one, since a namespace such as NENA's mixes public service
+//! names with kinds nobody here has vetted. Another URI masks the userinfo
+//! and query of a hierarchical form, or everything after the scheme when no
+//! part can be located.
+//!
+//! The default never chases an identity a sender put where the grammar
+//! places none, such as a number in host or namespace position: that sender
+//! owns the exposure, and masking those positions is an option the caller
+//! turns on.
 
 use std::fmt;
 use std::sync::Arc;
