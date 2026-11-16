@@ -101,6 +101,27 @@ impl Host {
         }
     }
 
+    /// [`Host::from_hostname`] for a name as text, without building a
+    /// [`Hostname`] for one that is a dotted-quad address.
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    /// use sip_uri_types::Host;
+    ///
+    /// assert_eq!(Host::from_name("198.51.100.1"), Host::Ipv4(Ipv4Addr::new(198, 51, 100, 1)));
+    /// assert_eq!(Host::from_name("EXAMPLE.com"), Host::from_hostname("EXAMPLE.com"));
+    /// ```
+    pub fn from_name(name: &str) -> Host {
+        // Only digits and dots parse as an address, and those are canonical as written.
+        let addr = name
+            .starts_with(|c: char| c.is_ascii_digit())
+            .then(|| name.parse::<Ipv4Addr>());
+        match addr {
+            Some(Ok(addr)) => Host::Ipv4(addr),
+            _ => Host::from_hostname(name),
+        }
+    }
+
     /// The host as URI constructors hold it: see [`Host::from_hostname`].
     pub(crate) fn normalized(self) -> Host {
         match self {
@@ -189,6 +210,24 @@ impl fmt::Display for Host {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn from_name_holds_what_from_hostname_holds() {
+        for name in [
+            "198.51.100.1",
+            "198.051.100.1",
+            "1.2.3",
+            "%31%39%38.51.100.1",
+            "198.51.100.1.",
+            "EXAMPLE.com",
+            "2001:db8::1",
+            "",
+            "0.0.0.0",
+            "255.255.255.256",
+        ] {
+            assert_eq!(Host::from_name(name), Host::from_hostname(name), "{name:?}");
+        }
+    }
 
     #[test]
     fn display_ipv6_has_brackets() {
