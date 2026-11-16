@@ -1,11 +1,18 @@
 //! Canonical form of each URI component, and the literal sets deciding it.
+//!
+//! The `is_*` predicates are the source of truth for each literal set. The
+//! canonizers read them through `CLASSES`, a byte table built from them at
+//! compile time with one bit per set, so a byte's membership is one load
+//! instead of an indirect call. A new set is a predicate first, then a bit
+//! and a row in the table and in its test, which checks every byte of every
+//! set against its predicate.
 
 use std::borrow::Cow;
 
 pub mod encoding;
 
 /// RFC 3261 §25: `unreserved = alphanum / mark`
-fn is_unreserved(c: u8) -> bool {
+const fn is_unreserved(c: u8) -> bool {
     c.is_ascii_alphanumeric()
         || matches!(
             c,
@@ -15,37 +22,37 @@ fn is_unreserved(c: u8) -> bool {
 
 /// Octets a user part writes literally: `unreserved` and `user-unreserved`
 /// but `;`, since a literal one starts user-params.
-fn is_user_literal(c: u8) -> bool {
+const fn is_user_literal(c: u8) -> bool {
     is_unreserved(c) || matches!(c, b'&' | b'=' | b'+' | b'$' | b',' | b'?' | b'/')
 }
 
 /// The user-literal set plus `#`, which phones and dialplans use unescaped.
-fn is_user_literal_or_hash(c: u8) -> bool {
+const fn is_user_literal_or_hash(c: u8) -> bool {
     is_user_literal(c) || c == b'#'
 }
 
 /// Octets a user-param name writes literally, where `=` would start the value.
-fn is_user_param_name_literal(c: u8) -> bool {
+const fn is_user_param_name_literal(c: u8) -> bool {
     is_user_literal(c) && c != b'='
 }
 
 /// RFC 3261 §25 password characters.
-fn is_password_literal(c: u8) -> bool {
+const fn is_password_literal(c: u8) -> bool {
     is_unreserved(c) || matches!(c, b'&' | b'=' | b'+' | b'$' | b',')
 }
 
 /// RFC 3261 §25: `unreserved / param-unreserved`.
-fn is_param_literal(c: u8) -> bool {
+const fn is_param_literal(c: u8) -> bool {
     is_unreserved(c) || matches!(c, b'[' | b']' | b'/' | b':' | b'&' | b'+' | b'$')
 }
 
 /// RFC 3261 §25: `unreserved / hnv-unreserved`.
-fn is_hnv_literal(c: u8) -> bool {
+const fn is_hnv_literal(c: u8) -> bool {
     is_unreserved(c) || matches!(c, b'[' | b']' | b'/' | b'?' | b':' | b'+' | b'$')
 }
 
 /// RFC 3986 §3.3: `pchar = unreserved / pct-encoded / sub-delims / ":" / "@"`
-fn is_pchar(c: u8) -> bool {
+const fn is_pchar(c: u8) -> bool {
     c.is_ascii_alphanumeric()
         || matches!(
             c,
@@ -69,32 +76,85 @@ fn is_pchar(c: u8) -> bool {
 }
 
 /// RFC 3986 §3.5 `fragment` characters, plus `#`.
-fn is_fragment_literal(c: u8) -> bool {
+const fn is_fragment_literal(c: u8) -> bool {
     is_pchar(c) || matches!(c, b'/' | b'?' | b'#')
 }
 
 /// A SIP fragment holds `@` escaped for the reason a param does.
-fn is_sip_fragment_literal(c: u8) -> bool {
+const fn is_sip_fragment_literal(c: u8) -> bool {
     is_fragment_literal(c) && c != b'@'
 }
 
 /// RFC 8141: `NSS = pchar *(pchar / "/")`.
-fn is_nss_literal(c: u8) -> bool {
+const fn is_nss_literal(c: u8) -> bool {
     is_pchar(c) || c == b'/'
 }
 
 /// RFC 8141: r-, q- and f-components are `*( pchar / "/" / "?" )`.
-fn is_rqf_literal(c: u8) -> bool {
+const fn is_rqf_literal(c: u8) -> bool {
     is_pchar(c) || matches!(c, b'/' | b'?')
 }
 
 /// RFC 8141: `ldh = alphanum / "-"`.
-fn is_ldh(c: u8) -> bool {
+const fn is_ldh(c: u8) -> bool {
     c.is_ascii_alphanumeric() || c == b'-'
 }
 
-fn never(_: u8) -> bool {
-    false
+/// A set of literal octets, one bit of [`CLASSES`] each.
+#[derive(Clone, Copy)]
+struct Class(u16);
+
+const NEVER: Class = Class(0);
+const UNRESERVED: Class = Class(1 << 0);
+const USER_OR_HASH: Class = Class(1 << 1);
+const USER_PARAM_NAME: Class = Class(1 << 2);
+const PASSWORD: Class = Class(1 << 3);
+const PARAM: Class = Class(1 << 4);
+const HNV: Class = Class(1 << 5);
+const PCHAR: Class = Class(1 << 6);
+const FRAGMENT: Class = Class(1 << 7);
+const SIP_FRAGMENT: Class = Class(1 << 8);
+const NSS: Class = Class(1 << 9);
+const RQF: Class = Class(1 << 10);
+const LDH: Class = Class(1 << 11);
+const OTHER: Class = Class(1 << 12);
+
+const fn bit(class: Class, member: bool) -> u16 {
+    if member {
+        class.0
+    } else {
+        0
+    }
+}
+
+/// The classes each octet belongs to, built from the predicates. Non-ASCII
+/// octets belong to none, so they are always escaped.
+const CLASSES: [u16; 256] = {
+    let mut table = [0; 256];
+    let mut c = 0;
+    while c < 0x80 {
+        table[c as usize] = bit(UNRESERVED, is_unreserved(c))
+            | bit(USER_OR_HASH, is_user_literal_or_hash(c))
+            | bit(USER_PARAM_NAME, is_user_param_name_literal(c))
+            | bit(PASSWORD, is_password_literal(c))
+            | bit(PARAM, is_param_literal(c))
+            | bit(HNV, is_hnv_literal(c))
+            | bit(PCHAR, is_pchar(c))
+            | bit(FRAGMENT, is_fragment_literal(c))
+            | bit(SIP_FRAGMENT, is_sip_fragment_literal(c))
+            | bit(NSS, is_nss_literal(c))
+            | bit(RQF, is_rqf_literal(c))
+            | bit(LDH, is_ldh(c))
+            | bit(OTHER, is_other_literal(c));
+        c += 1;
+    }
+    table
+};
+
+impl Class {
+    fn holds(self, b: u8) -> bool {
+        CLASSES[b as usize] & self.0 != 0
+    }
 }
 
 /// Schemes with their own URI type, never held by an `OtherUri`.
@@ -134,7 +194,7 @@ fn escape_at(bytes: &[u8], i: usize) -> Option<u8> {
 ///
 /// `decode` must be a subset of `keep`, which then makes the result
 /// idempotent. A `%` not starting a valid escape is the octet `%`.
-fn canonize(input: &str, decode: fn(u8) -> bool, keep: fn(u8) -> bool) -> String {
+fn canonize(input: &str, decode: Class, keep: Class) -> String {
     let bytes = input.as_bytes();
     let mut out = String::with_capacity(bytes.len());
     let mut i = 0;
@@ -155,10 +215,10 @@ fn canonize(input: &str, decode: fn(u8) -> bool, keep: fn(u8) -> bool) -> String
 
 /// [`canonize`], borrowing `input` when it is already canonical: no escape,
 /// and every byte one `keep` holds literal.
-fn canonize_cow(input: &str, decode: fn(u8) -> bool, keep: fn(u8) -> bool) -> Cow<'_, str> {
+fn canonize_cow(input: &str, decode: Class, keep: Class) -> Cow<'_, str> {
     if input
         .bytes()
-        .all(|b| b != b'%' && b.is_ascii() && keep(b))
+        .all(|b| b != b'%' && keep.holds(b))
     {
         Cow::Borrowed(input)
     } else {
@@ -166,8 +226,8 @@ fn canonize_cow(input: &str, decode: fn(u8) -> bool, keep: fn(u8) -> bool) -> Co
     }
 }
 
-fn push_octet(out: &mut String, b: u8, literal: fn(u8) -> bool) {
-    if b.is_ascii() && literal(b) {
+fn push_octet(out: &mut String, b: u8, literal: Class) {
+    if literal.holds(b) {
         out.push(b as char);
     } else {
         const HEX: &[u8; 16] = b"0123456789ABCDEF";
@@ -195,73 +255,73 @@ fn lowercase_literals(mut s: String) -> String {
 
 /// Canonize a SIP user part or user-param value.
 pub(crate) fn canonize_user(input: &str) -> String {
-    canonize(input, is_unreserved, is_user_literal_or_hash)
+    canonize(input, UNRESERVED, USER_OR_HASH)
 }
 
 /// Canonize a user-param name and value.
 pub(crate) fn canonize_user_param(name: &str, value: Option<&str>) -> (String, Option<String>) {
     (
-        canonize(name, is_unreserved, is_user_param_name_literal),
+        canonize(name, UNRESERVED, USER_PARAM_NAME),
         value.map(canonize_user),
     )
 }
 
 /// Canonize a password.
 pub(crate) fn canonize_password(input: &str) -> String {
-    canonize(input, is_unreserved, is_password_literal)
+    canonize(input, UNRESERVED, PASSWORD)
 }
 
 /// Canonize a SIP or tel: param name and value.
 pub(crate) fn canonize_param(name: &str, value: Option<&str>) -> (String, Option<String>) {
-    let one = |s: &str| canonize(s, is_unreserved, is_param_literal);
+    let one = |s: &str| canonize(s, UNRESERVED, PARAM);
     (one(name), value.map(one))
 }
 
 /// Canonize a SIP URI header name and value.
 pub(crate) fn canonize_header(name: &str, value: Option<&str>) -> (String, Option<String>) {
-    let one = |s: &str| canonize(s, is_unreserved, is_hnv_literal);
+    let one = |s: &str| canonize(s, UNRESERVED, HNV);
     (one(name), value.map(one))
 }
 
 /// A user-param name as [`canonize_user_param`] holds it, borrowed when
 /// unchanged.
 pub(crate) fn user_param_name(name: &str) -> Cow<'_, str> {
-    canonize_cow(name, is_unreserved, is_user_param_name_literal)
+    canonize_cow(name, UNRESERVED, USER_PARAM_NAME)
 }
 
 /// A param name as [`canonize_param`] holds it, borrowed when unchanged.
 pub(crate) fn param_name(name: &str) -> Cow<'_, str> {
-    canonize_cow(name, is_unreserved, is_param_literal)
+    canonize_cow(name, UNRESERVED, PARAM)
 }
 
 /// A header name as [`canonize_header`] holds it, borrowed when unchanged.
 pub(crate) fn header_name(name: &str) -> Cow<'_, str> {
-    canonize_cow(name, is_unreserved, is_hnv_literal)
+    canonize_cow(name, UNRESERVED, HNV)
 }
 
 /// Canonize a tel: number.
 pub(crate) fn canonize_tel_number(input: &str) -> String {
-    canonize(input, never, is_user_literal_or_hash)
+    canonize(input, NEVER, USER_OR_HASH)
 }
 
 /// Canonize a SIP fragment.
 pub(crate) fn canonize_sip_fragment(input: &str) -> String {
-    canonize(input, never, is_sip_fragment_literal)
+    canonize(input, NEVER, SIP_FRAGMENT)
 }
 
 /// Canonize a tel: fragment or URN f-component.
 pub(crate) fn canonize_fragment(input: &str) -> String {
-    canonize(input, never, is_fragment_literal)
+    canonize(input, NEVER, FRAGMENT)
 }
 
 /// Canonize a URN NSS.
 pub(crate) fn canonize_nss(input: &str) -> String {
-    canonize(input, never, is_nss_literal)
+    canonize(input, NEVER, NSS)
 }
 
 /// Canonize a URN r-component.
 pub(crate) fn canonize_urn_r(input: &str) -> String {
-    escape_q_start(canonize(input, never, is_rqf_literal))
+    escape_q_start(canonize(input, NEVER, RQF))
 }
 
 /// Escape a `?` before `=` in an r-component, since `?=` would start the
@@ -272,32 +332,32 @@ fn escape_q_start(r: String) -> String {
 
 /// Canonize a URN q-component.
 pub(crate) fn canonize_urn_q(input: &str) -> String {
-    canonize(input, never, is_rqf_literal)
+    canonize(input, NEVER, RQF)
 }
 
 /// Canonize a URN NID, lowercase.
 pub(crate) fn canonize_nid(input: &str) -> String {
-    lowercase_literals(canonize(input, never, is_ldh))
+    lowercase_literals(canonize(input, NEVER, LDH))
 }
 
 /// Canonize a hostname, lowercase with uppercase escape hex.
 pub(crate) fn canonize_hostname(input: &str) -> String {
-    lowercase_literals(canonize(input, is_unreserved, is_unreserved))
+    lowercase_literals(canonize(input, UNRESERVED, UNRESERVED))
 }
 
 /// Octets the text of an unrecognized URI writes literally: any ASCII but
 /// controls, space and the `<` `>` `"` that delimit a URI in a header.
-fn is_other_literal(c: u8) -> bool {
+const fn is_other_literal(c: u8) -> bool {
     !c.is_ascii_control() && !matches!(c, b' ' | b'<' | b'>' | b'"')
 }
 
 /// Canonize the text of an unrecognized URI, decoding nothing.
 pub(crate) fn canonize_other(input: &str) -> String {
-    escape(input.as_bytes(), is_other_literal)
+    escape(input.as_bytes(), OTHER)
 }
 
 /// Write each octet in `literal` as itself and every other as uppercase `%XX`.
-fn escape(bytes: &[u8], literal: fn(u8) -> bool) -> String {
+fn escape(bytes: &[u8], literal: Class) -> String {
     let mut out = String::with_capacity(bytes.len());
     for &b in bytes {
         push_octet(&mut out, b, literal);
@@ -333,6 +393,32 @@ mod tests {
             assert!(once.is_ascii(), "{once}");
             assert_eq!(f(&once), once);
         }
+    }
+
+    #[test]
+    fn class_table_matches_predicates() {
+        type Predicate = fn(u8) -> bool;
+        let classes: [(Class, Predicate); 13] = [
+            (UNRESERVED, is_unreserved),
+            (USER_OR_HASH, is_user_literal_or_hash),
+            (USER_PARAM_NAME, is_user_param_name_literal),
+            (PASSWORD, is_password_literal),
+            (PARAM, is_param_literal),
+            (HNV, is_hnv_literal),
+            (PCHAR, is_pchar),
+            (FRAGMENT, is_fragment_literal),
+            (SIP_FRAGMENT, is_sip_fragment_literal),
+            (NSS, is_nss_literal),
+            (RQF, is_rqf_literal),
+            (LDH, is_ldh),
+            (OTHER, is_other_literal),
+        ];
+        for (class, predicate) in classes {
+            for b in 0..=u8::MAX {
+                assert_eq!(class.holds(b), b.is_ascii() && predicate(b), "{b:#04x}");
+            }
+        }
+        assert!((0..=u8::MAX).all(|b| !NEVER.holds(b)));
     }
 
     #[test]

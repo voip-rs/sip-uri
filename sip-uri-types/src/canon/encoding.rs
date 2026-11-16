@@ -32,9 +32,8 @@
 use std::borrow::Cow;
 
 use super::{
-    escape, escape_at, escape_q_start, is_fragment_literal, is_hnv_literal, is_nss_literal,
-    is_param_literal, is_password_literal, is_pchar, is_rqf_literal, is_sip_fragment_literal,
-    is_user_literal_or_hash, is_user_param_name_literal, ESCAPE_LEN,
+    escape, escape_at, escape_q_start, ESCAPE_LEN, FRAGMENT, HNV, NSS, PARAM, PASSWORD, PCHAR, RQF,
+    SIP_FRAGMENT, USER_OR_HASH, USER_PARAM_NAME,
 };
 
 fn decode(text: &str) -> Cow<'_, [u8]> {
@@ -81,21 +80,21 @@ component!(
     /// takes it.
     encode_user,
     decode_user,
-    |v| escape(v, is_user_literal_or_hash)
+    |v| escape(v, USER_OR_HASH)
 );
 
 component!(
     /// a user-param name, as [`UserParams`](crate::UserParams) takes it.
     encode_user_param_name,
     decode_user_param_name,
-    |v| escape(v, is_user_param_name_literal)
+    |v| escape(v, USER_PARAM_NAME)
 );
 
 component!(
     /// a user-param value, as [`UserParams`](crate::UserParams) takes it.
     encode_user_param_value,
     decode_user_param_value,
-    |v| escape(v, is_user_literal_or_hash)
+    |v| escape(v, USER_OR_HASH)
 );
 
 component!(
@@ -103,7 +102,7 @@ component!(
     /// takes it.
     encode_password,
     decode_password,
-    |v| escape(v, is_password_literal)
+    |v| escape(v, PASSWORD)
 );
 
 component!(
@@ -111,7 +110,7 @@ component!(
     /// takes it.
     encode_param,
     decode_param,
-    |v| escape(v, is_param_literal)
+    |v| escape(v, PARAM)
 );
 
 component!(
@@ -119,14 +118,14 @@ component!(
     /// it.
     encode_header,
     decode_header,
-    |v| escape(v, is_hnv_literal)
+    |v| escape(v, HNV)
 );
 
 component!(
     /// a tel: number, as [`TelUri::new`](crate::TelUri::new) takes it.
     encode_tel_number,
     decode_tel_number,
-    |v| escape(v, is_user_literal_or_hash)
+    |v| escape(v, USER_OR_HASH)
 );
 
 component!(
@@ -134,7 +133,7 @@ component!(
     /// [`SipUri::with_fragment`](crate::SipUri::with_fragment) takes it.
     encode_sip_fragment,
     decode_sip_fragment,
-    |v| escape(v, is_sip_fragment_literal)
+    |v| escape(v, SIP_FRAGMENT)
 );
 
 component!(
@@ -143,14 +142,14 @@ component!(
     /// [`UrnUri::with_f_component`](crate::UrnUri::with_f_component) take it.
     encode_fragment,
     decode_fragment,
-    |v| escape(v, is_fragment_literal)
+    |v| escape(v, FRAGMENT)
 );
 
 component!(
     /// a URN NSS, as [`UrnUri::new`](crate::UrnUri::new) takes it.
     encode_nss,
     decode_nss,
-    |v| escape(v, is_nss_literal)
+    |v| escape(v, NSS)
 );
 
 component!(
@@ -158,7 +157,7 @@ component!(
     /// [`UrnUri::with_r_component`](crate::UrnUri::with_r_component) takes it.
     encode_r_component,
     decode_r_component,
-    |v| escape_q_start(escape(v, is_rqf_literal))
+    |v| escape_q_start(escape(v, RQF))
 );
 
 component!(
@@ -166,7 +165,7 @@ component!(
     /// [`UrnUri::with_q_component`](crate::UrnUri::with_q_component) takes it.
     encode_q_component,
     decode_q_component,
-    |v| escape(v, is_rqf_literal)
+    |v| escape(v, RQF)
 );
 
 component!(
@@ -184,7 +183,7 @@ component!(
     /// ```
     encode_cid,
     decode_cid,
-    |v| escape(v, is_pchar)
+    |v| escape(v, PCHAR)
 );
 
 #[cfg(test)]
