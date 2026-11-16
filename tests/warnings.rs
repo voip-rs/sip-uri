@@ -345,6 +345,37 @@ fn urn_component_charsets() {
 }
 
 #[test]
+fn other_text_outside_rfc3986_warns() {
+    let input = "http://example.com/a b\r\nVia: x";
+    let parsed = Uri::parse_with_warnings(input).unwrap();
+    let w = only(&parsed.warnings, Component::Other, WarningCode::InvalidChar);
+    assert_eq!(
+        w.position,
+        Some(
+            input
+                .find(' ')
+                .unwrap()
+        )
+    );
+    assert!(Uri::parse_strict(input).is_err());
+
+    let parsed = Uri::parse_with_warnings("http://example.com/a%zz").unwrap();
+    only(
+        &parsed.warnings,
+        Component::Other,
+        WarningCode::MalformedEscape,
+    );
+
+    for conformant in [
+        "http://[2001:db8::1]:8080/a%20b?q=1&r=a,b;c#f",
+        "data:,x",
+        "mailto:a@example.com",
+    ] {
+        assert!(Uri::parse_strict(conformant).is_ok(), "{conformant}");
+    }
+}
+
+#[test]
 fn uri_invalid_scheme() {
     for (input, held) in [
         ("<sip:alice@example.com>", "%3Csip:alice@example.com%3E"),

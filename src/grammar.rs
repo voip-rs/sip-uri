@@ -1,5 +1,35 @@
 //! RFC grammar classes deciding warnings, and the splits the parser makes.
 
+/// RFC 3986 §2: `unreserved / reserved`, every character a URI of any
+/// scheme may hold outside a `%XX` escape.
+pub(crate) fn is_rfc3986_char(c: u8) -> bool {
+    c.is_ascii_alphanumeric()
+        || matches!(
+            c,
+            b'-' | b'.'
+                | b'_'
+                | b'~'
+                | b':'
+                | b'/'
+                | b'?'
+                | b'#'
+                | b'['
+                | b']'
+                | b'@'
+                | b'!'
+                | b'$'
+                | b'&'
+                | b'\''
+                | b'('
+                | b')'
+                | b'*'
+                | b'+'
+                | b','
+                | b';'
+                | b'='
+        )
+}
+
 /// RFC 3261 §25: `unreserved = alphanum / mark`
 /// `mark = "-" / "_" / "." / "!" / "~" / "*" / "'" / "(" / ")"`
 pub(crate) fn is_unreserved(c: u8) -> bool {

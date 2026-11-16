@@ -20,7 +20,10 @@ pub(crate) fn parse(s: &str) -> Result<Parsed<Uri>, ParseError> {
         SchemeSplit::Named(scheme, _) if scheme.eq_ignore_ascii_case("urn") => {
             return Ok(super::urn::parse(s)?.map(Uri::Urn));
         }
-        SchemeSplit::Named(scheme, rest) => OtherUri::new(Some(scheme), rest),
+        SchemeSplit::Named(scheme, rest) => {
+            warnings.charset(Component::Other, rest, grammar::is_rfc3986_char);
+            OtherUri::new(Some(scheme), rest)
+        }
         SchemeSplit::Invalid => {
             warnings.push(Component::Scheme, WarningCode::InvalidScheme, s, 0);
             OtherUri::new(None, s)

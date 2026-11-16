@@ -109,6 +109,8 @@ pub enum Component {
     Nid,
     /// URN namespace-specific string.
     Nss,
+    /// Text after the scheme of a URI whose scheme has no type here.
+    Other,
 }
 
 impl Component {
@@ -130,6 +132,7 @@ impl Component {
             Component::RComponent => "r-component",
             Component::QComponent => "q-component",
             Component::FComponent => "f-component",
+            Component::Other => "other",
         }
     }
 }
