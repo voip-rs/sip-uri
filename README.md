@@ -330,10 +330,10 @@ assumed:
   checked with a byte-class table and held without a copy; a param or header
   list keeps all its pairs in one buffer, so a parsed URI costs a handful of
   allocations rather than several per param.
-- That buffer is read with unchecked slicing, the crate's only `unsafe`, since
-  bounds checks on every name and value read cost a measured 12% on lookups
-  and 5% on Display.
-  The spans it reads are written only by the list itself; a list whose text
+- That buffer is read with unchecked slicing, the only `unsafe` in either
+  crate (sip-uri itself forbids it), since bounds checks on every name and
+  value read cost a measured 12% on lookups and 5% on Display. The spans it
+  reads are written only by the list itself; a list whose text
   would pass 4 GiB is refused (a dropped pair with a warning when parsing, an
   error from serde and from `try_push`) instead of overflowing them.
 
