@@ -7,7 +7,10 @@
 //! A [`Host`] reads a hostname through [`Host::from_hostname`]. The shape is
 //! under the same semver as the fields: a field added to a parts struct is a
 //! minor release, missing fields take their defaults, unknown ones are
-//! ignored, and a SIP URI read without `scheme` has none.
+//! ignored, and a SIP URI read without `scheme` has none. That compatibility
+//! needs a self-describing format such as JSON, YAML or CBOR: in a
+//! positional one such as bincode or postcard, an added field changes the
+//! encoding, so data stored that way does not survive a minor release.
 //!
 //! ```
 //! use sip_uri_types::{Host, SipUri, TelUri};

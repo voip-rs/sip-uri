@@ -56,7 +56,7 @@ The optional `serde` feature serializes a value as its parts and deserializes th
 
 ## Stability
 
-The serde shape is under the same semver as the fields; a field added to a parts struct is a minor release. The URI kinds with their own type are fixed: a URI with any other scheme is `Uri::Other`. `Uri` and `Scheme` are therefore exhaustive, so a `match` on them needs no wildcard arm.
+The serde shape is under the same semver as the fields; a field added to a parts struct is a minor release. Data written by an older release reads back only in a self-describing format such as JSON, YAML or CBOR; a positional format such as bincode or postcard does not survive an added field. The URI kinds with their own type are fixed: a URI with any other scheme is `Uri::Other`. `Uri` and `Scheme` are therefore exhaustive, so a `match` on them needs no wildcard arm.
 
 ## Dependencies
 
