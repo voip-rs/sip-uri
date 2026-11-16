@@ -1,3 +1,10 @@
+//! Ordered `(name, value)` lists for params, user-params and headers.
+//!
+//! Each list canonizes through its own component's canonizer, and so does a
+//! name it is asked to look up, before the case-insensitive compare: `get`,
+//! `remove` and `set` agree on which pairs a name matches however it is
+//! spelled.
+
 use std::fmt;
 
 use crate::canon;
@@ -86,11 +93,12 @@ macro_rules! pair_list {
                 )
             }
 
-            /// The value of the first pair named `name`, compared
-            /// case-insensitively: `Some(None)` when it has no value.
+            /// The value of the first pair named `name`, canonized and
+            /// compared case-insensitively: `Some(None)` when it has no value.
             pub fn get(&self, name: &str) -> Option<Option<&str>> {
+                let (name, _) = $canonize(name, None);
                 self.iter()
-                    .find(|(n, _)| n.eq_ignore_ascii_case(name))
+                    .find(|(n, _)| n.eq_ignore_ascii_case(&name))
                     .map(|(_, v)| v)
             }
 
@@ -105,12 +113,13 @@ macro_rules! pair_list {
                 self
             }
 
-            /// Remove every pair named `name`, compared case-insensitively,
-            /// and return how many were removed.
+            /// Remove every pair named `name`, canonized and compared
+            /// case-insensitively, and return how many were removed.
             pub fn remove(&mut self, name: &str) -> usize {
+                let (name, _) = $canonize(name, None);
                 let before = self.0.len();
                 self.0
-                    .retain(|(n, _)| !n.eq_ignore_ascii_case(name));
+                    .retain(|(n, _)| !n.eq_ignore_ascii_case(&name));
                 before - self.0.len()
             }
 
@@ -323,6 +332,28 @@ mod tests {
         let mut set = Params::new();
         set.set("a;b", Some("%41"));
         assert_eq!(set, Params::new().with("a;b", Some("%41")));
+    }
+
+    #[test]
+    fn lookups_match_the_name_as_pushed() {
+        fn check<L: Default>(
+            push: fn(&mut L, &str, Option<&str>),
+            get: for<'a> fn(&'a L, &str) -> Option<Option<&'a str>>,
+            remove: fn(&mut L, &str) -> usize,
+        ) {
+            let mut list = L::default();
+            push(&mut list, "a b", Some("1"));
+            push(&mut list, "%41", None);
+            assert_eq!(get(&list, "a b"), Some(Some("1")));
+            assert_eq!(get(&list, "%41"), Some(None));
+            assert_eq!(get(&list, "a"), Some(None));
+            assert_eq!(remove(&mut list, "a b"), 1);
+            assert_eq!(remove(&mut list, "%61"), 1);
+            assert_eq!(get(&list, "a b"), None);
+        }
+        check::<Params>(|l, n, v| l.push(n, v), Params::get, Params::remove);
+        check::<UserParams>(|l, n, v| l.push(n, v), UserParams::get, UserParams::remove);
+        check::<Headers>(|l, n, v| l.push(n, v), Headers::get, Headers::remove);
     }
 
     #[test]
