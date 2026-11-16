@@ -348,19 +348,19 @@ mod tests {
 
     #[test]
     fn parse_ipv4_host() {
-        let uri = SipUri::parse("sip:172.21.55.55").unwrap();
+        let uri = SipUri::parse("sip:198.51.100.55").unwrap();
         assert_eq!(
             uri.host(),
-            Some(&Host::Ipv4(Ipv4Addr::new(172, 21, 55, 55)))
+            Some(&Host::Ipv4(Ipv4Addr::new(198, 51, 100, 55)))
         );
     }
 
     #[test]
     fn parse_ipv4_with_port() {
-        let uri = SipUri::parse("sip:172.21.55.55:5060").unwrap();
+        let uri = SipUri::parse("sip:198.51.100.55:5060").unwrap();
         assert_eq!(
             uri.host(),
-            Some(&Host::Ipv4(Ipv4Addr::new(172, 21, 55, 55)))
+            Some(&Host::Ipv4(Ipv4Addr::new(198, 51, 100, 55)))
         );
         assert_eq!(uri.port(), Some(5060));
     }
@@ -395,7 +395,7 @@ mod tests {
 
     #[test]
     fn parse_percent_encoded_user() {
-        let uri = SipUri::parse("sip:%22foo%22@172.21.55.55:5060").unwrap();
+        let uri = SipUri::parse("sip:%22foo%22@198.51.100.55:5060").unwrap();
         // %22 is double-quote, not unreserved, stays encoded
         assert_eq!(uri.user(), Some("%22foo%22"));
     }
@@ -519,7 +519,7 @@ mod tests {
 
     #[test]
     fn no_user_with_host_params() {
-        let uri = SipUri::parse("sip:172.21.55.55:5060;transport=udp").unwrap();
+        let uri = SipUri::parse("sip:198.51.100.55:5060;transport=udp").unwrap();
         assert_eq!(uri.user(), None);
         assert_eq!(uri.port(), Some(5060));
         assert_eq!(uri.param("transport"), Some(Some("udp")));

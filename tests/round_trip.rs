@@ -43,19 +43,19 @@ fn sofia_host_only() {
 
 #[test]
 fn sofia_ipv4() {
-    let uri = SipUri::parse("sip:172.21.55.55").unwrap();
+    let uri = SipUri::parse("sip:198.51.100.55").unwrap();
     assert_eq!(
         uri.host(),
-        Some(&Host::Ipv4(Ipv4Addr::new(172, 21, 55, 55)))
+        Some(&Host::Ipv4(Ipv4Addr::new(198, 51, 100, 55)))
     );
 }
 
 #[test]
 fn sofia_ipv4_with_port() {
-    let uri = SipUri::parse("sip:172.21.55.55:5060").unwrap();
+    let uri = SipUri::parse("sip:198.51.100.55:5060").unwrap();
     assert_eq!(
         uri.host(),
-        Some(&Host::Ipv4(Ipv4Addr::new(172, 21, 55, 55)))
+        Some(&Host::Ipv4(Ipv4Addr::new(198, 51, 100, 55)))
     );
     assert_eq!(uri.port(), Some(5060));
 }
@@ -91,12 +91,12 @@ fn sofia_empty_port() {
 
 #[test]
 fn sofia_percent_encoded_quotes_in_user() {
-    let uri = SipUri::parse("sip:%22foo%22@172.21.55.55:5060").unwrap();
+    let uri = SipUri::parse("sip:%22foo%22@198.51.100.55:5060").unwrap();
     // %22 is double-quote, not unreserved, stays encoded
     assert_eq!(uri.user(), Some("%22foo%22"));
     assert_eq!(
         uri.host(),
-        Some(&Host::Ipv4(Ipv4Addr::new(172, 21, 55, 55)))
+        Some(&Host::Ipv4(Ipv4Addr::new(198, 51, 100, 55)))
     );
 }
 
@@ -541,9 +541,12 @@ fn ng911_multiple_params_and_headers() {
 
 #[test]
 fn ng911_ipv4_with_port() {
-    let uri = SipUri::parse("sip:1411@10.2.2.2:5061;user=phone").unwrap();
+    let uri = SipUri::parse("sip:1411@198.51.100.2:5061;user=phone").unwrap();
     assert_eq!(uri.user(), Some("1411"));
-    assert_eq!(uri.host(), Some(&Host::Ipv4(Ipv4Addr::new(10, 2, 2, 2))));
+    assert_eq!(
+        uri.host(),
+        Some(&Host::Ipv4(Ipv4Addr::new(198, 51, 100, 2)))
+    );
     assert_eq!(uri.port(), Some(5061));
     assert_eq!(uri.param("user"), Some(Some("phone")));
 }
@@ -722,12 +725,12 @@ fn canonical_percent_encoded_host() {
 
 #[test]
 fn builder_sip_uri() {
-    let uri = SipUri::new(Host::Ipv4(Ipv4Addr::new(192, 168, 1, 1)))
+    let uri = SipUri::new(Host::Ipv4(Ipv4Addr::new(203, 0, 113, 1)))
         .with_scheme(Scheme::Sips)
         .with_user("alice")
         .with_port(5061)
         .with_param("transport", Some("tls"));
-    assert_eq!(uri.to_string(), "sips:alice@192.168.1.1:5061;transport=tls");
+    assert_eq!(uri.to_string(), "sips:alice@203.0.113.1:5061;transport=tls");
 }
 
 #[test]
