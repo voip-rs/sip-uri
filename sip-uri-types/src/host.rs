@@ -87,10 +87,18 @@ impl Host {
     /// ```
     pub fn from_hostname(name: impl Into<Hostname>) -> Host {
         let name = name.into();
+        // Every address Ipv4Addr parses starts with a digit; other names skip it.
         let addr = name
             .as_str()
-            .parse::<Ipv4Addr>();
-        addr.map_or(Host::Hostname(name), Host::Ipv4)
+            .starts_with(|c: char| c.is_ascii_digit())
+            .then(|| {
+                name.as_str()
+                    .parse::<Ipv4Addr>()
+            });
+        match addr {
+            Some(Ok(addr)) => Host::Ipv4(addr),
+            _ => Host::Hostname(name),
+        }
     }
 
     /// The host as URI constructors hold it: see [`Host::from_hostname`].
