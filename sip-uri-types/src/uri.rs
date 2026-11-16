@@ -77,10 +77,17 @@ impl OtherUri {
             }),
             Some(s) if !canon::is_scheme(s) => Err(OtherUriError::InvalidScheme),
             Some(s) if canon::is_known_scheme(s) => Err(OtherUriError::TypedScheme),
-            Some(s) => Ok(OtherUri {
-                raw: format!("{}:{}", s.to_ascii_lowercase(), canon::canonize_other(rest)),
-                scheme_end: Some(s.len()),
-            }),
+            Some(s) => {
+                let mut raw = String::with_capacity(s.len() + 1 + rest.len());
+                raw.push_str(s);
+                raw.make_ascii_lowercase();
+                raw.push(':');
+                canon::push_other(&mut raw, rest);
+                Ok(OtherUri {
+                    raw,
+                    scheme_end: Some(s.len()),
+                })
+            }
         }
     }
 

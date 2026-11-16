@@ -363,7 +363,29 @@ const fn is_other_literal(c: u8) -> bool {
 
 /// Canonize the text of an unrecognized URI, decoding nothing.
 pub(crate) fn canonize_other(input: &str) -> String {
-    escape(input.as_bytes(), OTHER)
+    let mut out = String::with_capacity(input.len());
+    push_other(&mut out, input);
+    out
+}
+
+/// Append [`canonize_other`] of `input` to `out`, each run of literal
+/// octets copied whole.
+pub(crate) fn push_other(out: &mut String, input: &str) {
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        // A literal run is ASCII, so both its ends are char boundaries.
+        let run_end = bytes[i..]
+            .iter()
+            .position(|&b| !OTHER.holds(b))
+            .map_or(bytes.len(), |n| i + n);
+        out.push_str(&input[i..run_end]);
+        i = run_end;
+        while i < bytes.len() && !OTHER.holds(bytes[i]) {
+            push_octet(out, bytes[i], OTHER);
+            i += 1;
+        }
+    }
 }
 
 /// Write each octet in `literal` as itself and every other as uppercase `%XX`.
