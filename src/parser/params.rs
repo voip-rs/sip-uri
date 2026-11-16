@@ -1,9 +1,6 @@
 use crate::grammar::{CharClass, HNV, PARAM, TEL_PARAMCHAR, TEL_PNAME, USER};
 use crate::warning::{Component, WarningCode, Warnings};
 
-/// Split pairs, as written, for the data crate's constructor to canonize.
-pub(crate) type RawPairs<'a> = Vec<(&'a str, Option<&'a str>)>;
-
 /// Character sets for one kind of `;`-separated param list.
 pub(crate) struct ParamGrammar {
     component: Component,
@@ -33,14 +30,15 @@ pub(crate) const TEL_PARAMS: ParamGrammar = ParamGrammar {
     value: TEL_PARAMCHAR,
 };
 
-/// Split the params following a `;`, which is not included in `s`.
+/// Split the params following a `;`, which is not included in `s`, handing
+/// each pair as written to `push` for the data crate to canonize.
 pub(crate) fn parse_params<'a>(
     s: &'a str,
     grammar: &ParamGrammar,
     warnings: &mut Warnings,
-) -> RawPairs<'a> {
+    mut push: impl FnMut(&'a str, Option<&'a str>),
+) {
     let component = grammar.component;
-    let mut params = Vec::new();
     for part in s.split(';') {
         if part.is_empty() {
             warnings.push(component, WarningCode::EmptySegment, part, 0);
@@ -57,14 +55,17 @@ pub(crate) fn parse_params<'a>(
         if let Some(value) = value {
             warnings.charset(component, value, grammar.value);
         }
-        params.push((name, value));
+        push(name, value);
     }
-    params
 }
 
-/// Split header parameters following a `?`: `name=value` pairs separated by `&`.
-pub(crate) fn parse_headers<'a>(s: &'a str, warnings: &mut Warnings) -> RawPairs<'a> {
-    let mut headers = Vec::new();
+/// Split header parameters following a `?`: `name=value` pairs separated by
+/// `&`, each handed as written to `push`.
+pub(crate) fn parse_headers<'a>(
+    s: &'a str,
+    warnings: &mut Warnings,
+    mut push: impl FnMut(&'a str, Option<&'a str>),
+) {
     for part in s.split('&') {
         if part.is_empty() {
             warnings.push(Component::Header, WarningCode::EmptySegment, part, 0);
@@ -89,18 +90,18 @@ pub(crate) fn parse_headers<'a>(s: &'a str, warnings: &mut Warnings) -> RawPairs
         if let Some(value) = value {
             warnings.charset(Component::Header, value, HNV);
         }
-        headers.push((name, value));
+        push(name, value);
     }
-    headers
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn sip_params(s: &str) -> RawPairs<'_> {
+    fn sip_params(s: &str) -> Vec<(&str, Option<&str>)> {
         let mut w = Warnings::new(s);
-        let params = parse_params(s, &SIP_PARAMS, &mut w);
+        let mut params = Vec::new();
+        parse_params(s, &SIP_PARAMS, &mut w, |n, v| params.push((n, v)));
         assert!(!w
             .finish(())
             .has_warnings());
@@ -127,7 +128,8 @@ mod tests {
     #[test]
     fn parse_headers_basic() {
         let s = "From=foo@bar&To=bar@baz&Flag";
-        let headers = parse_headers(s, &mut Warnings::new(s));
+        let mut headers = Vec::new();
+        parse_headers(s, &mut Warnings::new(s), |n, v| headers.push((n, v)));
         assert_eq!(
             headers,
             [

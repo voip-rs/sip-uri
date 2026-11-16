@@ -121,9 +121,11 @@ fn split_userinfo(
     }
 
     if let Some(p) = params_str {
-        parts.user_params = parse_params(p, &params::USER_PARAMS, warnings)
-            .into_iter()
-            .collect();
+        parse_params(p, &params::USER_PARAMS, warnings, |n, v| {
+            parts
+                .user_params
+                .push(n, v)
+        });
     }
     parts.user = Some(user_part.to_string());
 }
@@ -211,14 +213,18 @@ fn split_hostport_params_headers(s: &str, parts: &mut SipUriParts, warnings: &mu
     };
 
     if let Some(p) = params_str {
-        parts.params = parse_params(p, &params::SIP_PARAMS, warnings)
-            .into_iter()
-            .collect();
+        parse_params(p, &params::SIP_PARAMS, warnings, |n, v| {
+            parts
+                .params
+                .push(n, v)
+        });
     }
     if let Some(h) = headers_str {
-        parts.headers = parse_headers(h, warnings)
-            .into_iter()
-            .collect();
+        parse_headers(h, warnings, |n, v| {
+            parts
+                .headers
+                .push(n, v)
+        });
     }
 }
 
