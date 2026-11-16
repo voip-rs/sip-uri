@@ -3,6 +3,12 @@
 //! Converting a `Uri` into one variant's type fails with [`KindMismatch`],
 //! which hands the `Uri` back and names both kinds but never its text,
 //! since a user part is often a phone number.
+//!
+//! `Other` keeps its text as sent except for the scheme, lowercased because
+//! schemes compare case-insensitively, so `scheme()` reads alike across
+//! variants and two spellings of one URI are equal. Only bytes that would
+//! break a header line are escaped and nothing is decoded: an unknown
+//! scheme's grammar is not ours to normalize.
 
 use std::fmt;
 

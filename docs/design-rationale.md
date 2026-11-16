@@ -20,10 +20,6 @@ A scheme, host, NID, NSS or tel number that is missing or unreadable is `None` w
 
 The parser never trims whitespace or removes brackets: text it cannot place stays, escaped, in the component it falls in, with a warning, and stripping what a header wrapped around the URI is the caller's job. Only text after the host or port that starts no component is dropped, and its warning says so. When the scheme cannot be read, everything up to `@` is the user part and its `:` starts no password, so a number behind a malformed prefix lands where a reader looks for it.
 
-## An unrecognized scheme is kept, lowercased
-
-`Other` keeps the input as sent except for its scheme, lowercased because schemes compare case-insensitively, so `scheme()` reads the same for every variant and two spellings of one URI compare equal. Bytes that would break a header line are escaped and nothing is decoded, since the grammar of an unknown scheme is not ours to normalize.
-
 ## A warning names the component and position, never the text
 
 A warning carries which component broke, a typed code, the byte offset and whether the value survived, but no copy of the offending text. The user part is often a phone number and warnings are what consumers log; the value itself is on the parsed struct for anyone entitled to it. Error messages follow the same rule.
