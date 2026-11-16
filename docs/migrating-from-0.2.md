@@ -102,6 +102,8 @@ In 0.3, nearly everything those messages described is a typed `ParseWarning`. Ea
 - the byte offset (`position`);
 - whether the value survived (`WarningKind::Recovered`) or the component was dropped (`WarningKind::Lost`).
 
+Code that already read 0.2.9's warnings: `Component::UserParam`'s stable name is now `user-param`, not `uparam`, so a log filter keyed on the old string needs updating; warnings come in input order; and new codes report an IPv6 zone dropped from a host (`Ipv6Zone`) and a pair dropped from a list past its size limit (`TooLong`).
+
 That leaves a lenient parse three errors — empty input (which for `SipUri` includes input such as `:` or `@` that leaves no component), another type's scheme, and for `Host` alone no readable host — and a strict one a fourth:
 
 ```rust,ignore
@@ -160,6 +162,7 @@ Builders and parts structs take URI text, not logical values: `with_user("%2B1")
 | `Uri::Other(String)` | `Uri::Other(OtherUri)`, built with `OtherUri::new(scheme, rest)`, which returns `Result<OtherUri, OtherUriError>` |
 | `as_other() -> Option<&str>`, `into_other() -> Option<String>` | `Option<&OtherUri>`, `Option<OtherUri>`; `as_str()` or `to_string()` gives the text |
 | `Host::Hostname(String)` | `Host::Hostname(Hostname)`; `"x".into()` still builds one, lowercased; read it with `as_str()`, since it neither derefs to nor compares with `str` |
+| `Host::IPv4`, `Host::IPv6` | `Host::Ipv4`, `Host::Ipv6`, as `std::net` spells them; the serde tags stay `ipv4` and `ipv6` |
 
 The parts structs are `#[non_exhaustive]`, so start from `Default` and assign fields:
 
@@ -255,7 +258,7 @@ sip-uri parses URIs only (`addr-spec`). `"Alice" <sip:alice@example.com>;tag=abc
 
 ## Also new
 
-- Conversions: `Host` from `Ipv4Addr`, `Ipv6Addr` and `IpAddr`, and `Host::ip()` back; `Uri` from `OtherUri`; `SipUri`, `TelUri`, `UrnUri` and `OtherUri` through `TryFrom<Uri>`, failing with `KindMismatch`, whose `into_uri()` hands the `Uri` back; `AsRef<str>` on `Hostname` and `OtherUri`; `Scheme::default_port()`; `Parsed::map()` to change the value and keep the warnings.
+- Conversions: `Host` from `Ipv4Addr`, `Ipv6Addr` and `IpAddr`, and `Host::ip()` back; `Host::from_name(&str)`, which holds a dotted quad as `Host::Ipv4` without building a `Hostname` first; `Uri` from `OtherUri`; `SipUri`, `TelUri`, `UrnUri` and `OtherUri` through `TryFrom<Uri>`, failing with `KindMismatch`, whose `into_uri()` hands the `Uri` back; `AsRef<str>` on `Hostname` and `OtherUri`; `Scheme::default_port()`; `Parsed::map()` to change the value and keep the warnings.
 - A URI is edited in place: `params_mut()` and `headers_mut()` on `SipUri` (`params_mut()` on `TelUri`) give the collection, and `SipUri::edit_user_params()` lends the user-params to a closure and re-pairs them with the user afterwards. Each collection's `set()`, `remove()` and `retain()` work by case-insensitive name. `set()` replaces the first match in place, removes later ones and appends when absent; every insertion canonizes as the builders do. `SipUri::with_host()` replaces the host on a value it consumes, as the other builders do.
 - `Uri` and `Scheme` are exhaustive; 0.2 marked them `#[non_exhaustive]`. A `match` naming every variant needs no `_` arm, and one that has it gets an unreachable-pattern warning. The set is fixed: any other scheme is `Uri::Other`.
 - `SipUri`, `TelUri`, `UrnUri` and `Uri` implement `Hash`, consistent with `Eq`. Both compare the canonical form component by component, never RFC 3261 §19.1.4 equivalence: param order, param and header name case, tel: visual separators and a hostname's trailing dot all count.
