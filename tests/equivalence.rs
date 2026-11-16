@@ -1,4 +1,5 @@
-use sip_uri::{SipUri, TelUri, Uri, UriEquivalence, UriParse, UrnUri};
+use sip_uri::sip_uri_types::Headers;
+use sip_uri::{SipUri, TelUri, Uri, UriEquivalence, UriHeaderEquivalence, UriParse, UrnUri};
 
 fn check<T: UriParse + UriEquivalence>(a: &str, b: &str, expected: bool) {
     let (a_uri, b_uri) = (T::parse(a).unwrap(), T::parse(b).unwrap());
@@ -158,4 +159,41 @@ fn same_name_headers_compare_in_order() {
         false,
     );
     check::<SipUri>("sip:example.com?A=1&A=1", "sip:example.com?A=1", false);
+}
+
+/// Folds the compact name `s` into `subject` and compares values ignoring
+/// case: a stand-in for a header parser's field rules.
+struct SubjectRules;
+
+impl UriHeaderEquivalence for SubjectRules {
+    fn headers_equivalent(&self, a: &Headers, b: &Headers) -> bool {
+        let folded = |h: &Headers| {
+            h.iter()
+                .map(|(n, v)| {
+                    let name = if n.eq_ignore_ascii_case("s") {
+                        "subject".to_string()
+                    } else {
+                        n.to_ascii_lowercase()
+                    };
+                    (name, v.map(str::to_ascii_lowercase))
+                })
+                .collect::<Vec<_>>()
+        };
+        folded(a) == folded(b)
+    }
+}
+
+#[test]
+fn equivalent_with_takes_the_header_rules() {
+    let a = SipUri::parse("sip:example.com?s=Lunch").unwrap();
+    let b = SipUri::parse("sip:example.com?subject=lunch").unwrap();
+    assert!(!a.equivalent(&b));
+    assert!(a.equivalent_with(&b, &SubjectRules));
+    let rules: &dyn UriHeaderEquivalence = &SubjectRules;
+    assert!(a.equivalent_with(&b, rules));
+    let (ua, ub) = (Uri::Sip(a), Uri::Sip(b));
+    assert!(!ua.equivalent(&ub));
+    assert!(ua.equivalent_with(&ub, rules));
+    let tel = TelUri::parse("tel:+15551234567").unwrap();
+    assert!(tel.equivalent_with(&tel, rules));
 }

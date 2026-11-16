@@ -39,7 +39,7 @@ sip-uri = "0.3.0-rc.1"
 | `ParseError` | `Empty`, `SchemeMismatch`, `NoHost` for a standalone host, or `NonConformant` from a strict parse |
 | `Parsed` / `ParseWarning` | Value plus the grammar breaches the parser accepted |
 | `Redaction` | What `UriRedact::redacted()` masks when a URI is rendered for logs |
-| `UriEquivalence` | RFC 3261, RFC 3966 and RFC 8141 URI equivalence, apart from `Eq` |
+| `UriEquivalence`, `UriHeaderEquivalence` | RFC 3261, RFC 3966 and RFC 8141 URI equivalence, apart from `Eq`; header-field rules plug in through `equivalent_with` |
 
 `Uri`, `SipUri`, `TelUri`, `UrnUri` and `Host` implement `UriParse`, and every URI and host type implements `Display`, `Debug`, `Clone`, `PartialEq`, `Eq` and `Hash`.
 Parsing is a trait, not `FromStr`, so bring `sip_uri::UriParse` into scope.
@@ -48,7 +48,10 @@ header lookup is case-insensitive. `Eq` and `Hash` are canonical-structural
 identity, never RFC 3261 §19.1.4 URI equivalence: parameter order, parameter
 and header name case, tel: visual separators and a hostname's trailing dot all
 count. RFC equivalence is `UriEquivalence::equivalent`, after RFC 3261 §19.1.4,
-RFC 3966 §4 and RFC 8141 §3. `Display` emits the canonical form, so a value re-parses from its
+RFC 3966 §4 and RFC 8141 §3. Its URI headers keep the order of rows sharing a
+name and compare values exactly; `equivalent_with` takes a
+`UriHeaderEquivalence` carrying each header field's own rules, which a SIP
+header parser such as sip-header supplies. `Display` emits the canonical form, so a value re-parses from its
 `Display` as itself, while `display(parse(x))` need not equal `x`. The
 exceptions re-parse as another reading or none:
 

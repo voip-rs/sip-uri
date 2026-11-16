@@ -6,6 +6,15 @@
 //! component with a default value, the transport-parameter included, does
 //! not match one stating it, and lists `sip:bob@biloxi.com` and
 //! `sip:bob@biloxi.com;transport=udp` as not equivalent.
+//!
+//! §19.1.4 matches URI headers by each header field's own rules, which
+//! need SIP header grammar, outside this crate's scope. The default
+//! therefore keeps only what needs no grammar, §7.3.1's row order with
+//! exact values, and [`UriEquivalence::equivalent_with`] takes the field
+//! rules from a [`UriHeaderEquivalence`] that a header parser such as
+//! sip-header implements. It receives whole header sets, since compact
+//! names regroup rows, comma-combining compares groups, and a
+//! non-transitive value relation defeats pairing rows one at a time.
 
 use sip_uri_types::{Headers, Params, SipUri, TelUri, Uri, UrnUri};
 
@@ -50,8 +59,58 @@ mod sealed {
 /// assert!(a.equivalent(&b));
 /// ```
 pub trait UriEquivalence: sealed::Sealed {
-    /// Whether `self` and `other` are equivalent URIs.
-    fn equivalent(&self, other: &Self) -> bool;
+    /// Whether `self` and `other` are equivalent URIs, headers compared by
+    /// [`ordered_headers_equivalent`].
+    fn equivalent(&self, other: &Self) -> bool {
+        self.equivalent_with(other, &OrderedHeaders)
+    }
+
+    /// Whether `self` and `other` are equivalent URIs, headers compared by
+    /// `headers`; only a SIP URI has headers to compare.
+    fn equivalent_with<H: UriHeaderEquivalence + ?Sized>(&self, other: &Self, headers: &H) -> bool;
+}
+
+/// The header-field matching rules [`UriEquivalence::equivalent_with`]
+/// applies to two SIP URIs' header sets.
+///
+/// RFC 3261 §19.1.4 matches each header by its own field's rules, which a
+/// SIP header parser supplies; [`ordered_headers_equivalent`] is the rule
+/// without them, to fall back on for a field the implementor does not know.
+///
+/// ```
+/// use sip_uri::{SipUri, UriEquivalence, UriHeaderEquivalence, UriParse};
+/// use sip_uri::sip_uri_types::Headers;
+///
+/// struct CaseFolded;
+///
+/// impl UriHeaderEquivalence for CaseFolded {
+///     fn headers_equivalent(&self, a: &Headers, b: &Headers) -> bool {
+///         a.len() == b.len()
+///             && a.iter().zip(b.iter()).all(|((an, av), (bn, bv))| {
+///                 an.eq_ignore_ascii_case(bn)
+///                     && av.map(str::to_ascii_lowercase) == bv.map(str::to_ascii_lowercase)
+///             })
+///     }
+/// }
+///
+/// let a = SipUri::parse("sip:example.com?subject=Lunch").unwrap();
+/// let b = SipUri::parse("sip:example.com?subject=lunch").unwrap();
+/// assert!(!a.equivalent(&b));
+/// assert!(a.equivalent_with(&b, &CaseFolded));
+/// ```
+pub trait UriHeaderEquivalence {
+    /// Whether the header sets `a` and `b` match. Names and values are the
+    /// canonical, percent-encoded text the URI holds.
+    fn headers_equivalent(&self, a: &Headers, b: &Headers) -> bool;
+}
+
+/// [`ordered_headers_equivalent`] as the default comparator.
+struct OrderedHeaders;
+
+impl UriHeaderEquivalence for OrderedHeaders {
+    fn headers_equivalent(&self, a: &Headers, b: &Headers) -> bool {
+        ordered_headers_equivalent(a, b)
+    }
 }
 
 impl sealed::Sealed for SipUri {}
@@ -63,7 +122,7 @@ impl sealed::Sealed for Uri {}
 const SIP_PARAMS_ALWAYS_COMPARED: [&str; 5] = ["user", "ttl", "method", "maddr", "transport"];
 
 impl UriEquivalence for SipUri {
-    fn equivalent(&self, other: &Self) -> bool {
+    fn equivalent_with<H: UriHeaderEquivalence + ?Sized>(&self, other: &Self, headers: &H) -> bool {
         self.scheme() == other.scheme()
             && self.user() == other.user()
             && self.user_params() == other.user_params()
@@ -71,7 +130,7 @@ impl UriEquivalence for SipUri {
             && self.host() == other.host()
             && self.port() == other.port()
             && sip_params_equivalent(self.params(), other.params())
-            && ordered_headers_equivalent(self.headers(), other.headers())
+            && headers.headers_equivalent(self.headers(), other.headers())
             && self.fragment() == other.fragment()
     }
 }
@@ -164,7 +223,7 @@ fn tel_params_equivalent(a: &Params, b: &Params) -> bool {
 }
 
 impl UriEquivalence for TelUri {
-    fn equivalent(&self, other: &Self) -> bool {
+    fn equivalent_with<H: UriHeaderEquivalence + ?Sized>(&self, other: &Self, _: &H) -> bool {
         let numbers = match (self.number(), other.number()) {
             (Some(a), Some(b)) => digits_equivalent(a, b),
             (a, b) => a == b,
@@ -176,17 +235,17 @@ impl UriEquivalence for TelUri {
 }
 
 impl UriEquivalence for UrnUri {
-    fn equivalent(&self, other: &Self) -> bool {
+    fn equivalent_with<H: UriHeaderEquivalence + ?Sized>(&self, other: &Self, _: &H) -> bool {
         self.nid() == other.nid() && self.nss() == other.nss()
     }
 }
 
 impl UriEquivalence for Uri {
-    fn equivalent(&self, other: &Self) -> bool {
+    fn equivalent_with<H: UriHeaderEquivalence + ?Sized>(&self, other: &Self, headers: &H) -> bool {
         match (self, other) {
-            (Uri::Sip(a), Uri::Sip(b)) => a.equivalent(b),
-            (Uri::Tel(a), Uri::Tel(b)) => a.equivalent(b),
-            (Uri::Urn(a), Uri::Urn(b)) => a.equivalent(b),
+            (Uri::Sip(a), Uri::Sip(b)) => a.equivalent_with(b, headers),
+            (Uri::Tel(a), Uri::Tel(b)) => a.equivalent_with(b, headers),
+            (Uri::Urn(a), Uri::Urn(b)) => a.equivalent_with(b, headers),
             (Uri::Other(a), Uri::Other(b)) => a == b,
             _ => false,
         }
