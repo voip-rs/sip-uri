@@ -257,10 +257,21 @@ impl From<OtherUri> for Uri {
 /// assert_eq!(err.to_string(), "expected a SIP URI, found a tel: URI");
 /// assert_eq!(err.into_uri(), uri);
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct KindMismatch {
     expected: &'static str,
     uri: Uri,
+}
+
+/// Names the kinds only, as Display does: `unwrap()` on a conversion puts
+/// this in the panic message.
+impl fmt::Debug for KindMismatch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("KindMismatch")
+            .field("expected", &self.expected)
+            .field("found", &kind(&self.uri))
+            .finish()
+    }
 }
 
 impl KindMismatch {
@@ -358,6 +369,11 @@ mod tests {
             !err.to_string()
                 .contains("5551234567"),
             "{err}"
+        );
+        let debug = format!("{:?}", TelUri::try_from(sip.clone()).unwrap_err());
+        assert_eq!(
+            debug,
+            r#"KindMismatch { expected: "a tel: URI", found: "a SIP URI" }"#
         );
 
         let cases = [

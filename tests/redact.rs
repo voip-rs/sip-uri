@@ -292,3 +292,12 @@ fn off_grammar_positions_are_shown_by_default_and_masked_on_request() {
         "***"
     );
 }
+
+#[test]
+fn debug_of_a_rendering_is_redacted() {
+    let uri = sip("sip:+15551234567:pw@example.com");
+    assert_eq!(
+        format!("{:?}", uri.redacted(&Redaction::default())),
+        r#"Redacted(sip:***@example.com)"#
+    );
+}

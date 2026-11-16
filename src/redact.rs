@@ -223,11 +223,23 @@ impl Redaction {
     }
 }
 
-/// [`fmt::Display`] adapter returned by [`UriRedact::redacted`].
-#[derive(Debug, Clone, Copy)]
+/// [`fmt::Display`] adapter returned by [`UriRedact::redacted`]. Its Debug
+/// writes the same redacted text, so `{:?}` in a log line leaks nothing.
+#[derive(Clone, Copy)]
 pub struct Redacted<'a, T> {
     uri: &'a T,
     how: &'a Redaction,
+}
+
+impl<T> fmt::Debug for Redacted<'_, T>
+where
+    Self: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Redacted")
+            .field(&format_args!("{self}"))
+            .finish()
+    }
 }
 
 mod sealed {
