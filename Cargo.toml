@@ -42,6 +42,7 @@ sip-uri-types = { version = "1.0.0-rc.2", path = "sip-uri-types" }
 clap = { version = "4", default-features = false, features = ["std", "help", "usage", "error-context", "derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
 
 [profile.release-min]
 inherits = "release"
@@ -50,3 +51,12 @@ lto = "fat"
 codegen-units = 1
 panic = "abort"
 strip = true
+
+# Last in the file: scripts/bench-compare.sh appends from here to a base's manifest.
+[[bench]]
+name = "parse"
+harness = false
+
+[[bench]]
+name = "count"
+harness = false
