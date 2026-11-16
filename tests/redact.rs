@@ -61,6 +61,20 @@ fn masked_param_names_match_however_they_are_spelled() {
             .to_string(),
         "sip:example.com;a%20b=***;token=***"
     );
+    let how = Redaction::default().params(["a;b", "%73ession"]);
+    for spelling in ["a;b", "a%3Bb", "%73ession", "session", "SESSION"] {
+        assert!(how.masks_param(spelling), "{spelling}");
+    }
+    assert!(!how.masks_param(""));
+    let user = sip("sip:alice;a,b=secret@example.com");
+    let how = Redaction::default()
+        .user(UserMask::Visible)
+        .params(["a,b"]);
+    assert_eq!(
+        user.redacted(&how)
+            .to_string(),
+        "sip:alice;a,b=***@example.com"
+    );
 }
 
 #[test]

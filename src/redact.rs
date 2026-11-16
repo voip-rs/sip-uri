@@ -294,23 +294,31 @@ impl Redaction {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        let canonical: Params = names
+        self.params = names
             .into_iter()
-            .map(|name| (name, None::<&str>))
-            .collect();
-        self.params = canonical
-            .iter()
-            .map(|(name, _)| name.to_string())
+            .filter_map(|name| canonical_param_name(name.as_ref()))
             .collect();
         self
     }
 
-    /// Whether [`params`](Redaction::params) names `name`, ignoring ASCII case.
+    /// Whether [`params`](Redaction::params) names `name`, both canonized
+    /// and compared ignoring ASCII case.
     pub fn masks_param(&self, name: &str) -> bool {
-        self.params
-            .iter()
-            .any(|p| p.eq_ignore_ascii_case(name))
+        canonical_param_name(name).is_some_and(|name| {
+            self.params
+                .iter()
+                .any(|p| p.eq_ignore_ascii_case(&name))
+        })
     }
+}
+
+/// `name` as a param list holds it, or `None` for an empty name.
+fn canonical_param_name(name: &str) -> Option<String> {
+    Params::new()
+        .with(name, None)
+        .iter()
+        .next()
+        .map(|(name, _)| name.to_string())
 }
 
 /// [`fmt::Display`] adapter returned by [`UriRedact::redacted`]. Its Debug
