@@ -61,26 +61,6 @@ impl From<&str> for Hostname {
     }
 }
 
-impl std::ops::Deref for Hostname {
-    type Target = str;
-
-    fn deref(&self) -> &str {
-        &self.0
-    }
-}
-
-impl PartialEq<str> for Hostname {
-    fn eq(&self, other: &str) -> bool {
-        self.0 == other
-    }
-}
-
-impl PartialEq<&str> for Hostname {
-    fn eq(&self, other: &&str) -> bool {
-        self.0 == *other
-    }
-}
-
 impl fmt::Display for Hostname {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.0)

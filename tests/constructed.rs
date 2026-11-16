@@ -697,7 +697,13 @@ fn standalone_host_survives_unless_empty_or_dotted_quad() {
         );
         let reparsed = Host::parse(&host.to_string());
         match Host::from_hostname(s.as_str()) {
-            Host::Hostname(name) if name.is_empty() => assert!(reparsed.is_err(), "{s:?}"),
+            Host::Hostname(name)
+                if name
+                    .as_str()
+                    .is_empty() =>
+            {
+                assert!(reparsed.is_err(), "{s:?}")
+            }
             Host::IPv4(addr) => assert_eq!(reparsed.unwrap(), Host::IPv4(addr), "{s:?}"),
             _ => assert_eq!(reparsed.unwrap(), host, "{s:?}"),
         }

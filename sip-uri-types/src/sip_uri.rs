@@ -148,7 +148,8 @@ fn hold_user(user: Option<String>, user_params: &UserParams) -> Option<String> {
 }
 
 fn hold_host(host: Host) -> Option<Host> {
-    Some(host.normalized()).filter(|h| !matches!(h, Host::Hostname(name) if name.is_empty()))
+    Some(host.normalized())
+        .filter(|h| !matches!(h, Host::Hostname(name) if name.as_str().is_empty()))
 }
 
 fn hold_fragment(fragment: &str) -> Option<String> {
