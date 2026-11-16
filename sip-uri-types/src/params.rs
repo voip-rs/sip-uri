@@ -4,7 +4,13 @@
 //! name it is asked to look up, before the case-insensitive compare: `get`,
 //! `remove` and `set` agree on which pairs a name matches however it is
 //! spelled.
+//!
+//! A lookup compares the name as given first and canonizes it only when
+//! nothing matches: a name equal to a held canonical name ignoring ASCII
+//! case is itself canonical up to case, so both comparisons find the same
+//! pairs, and the common lookup costs no canonization.
 
+use std::borrow::Cow;
 use std::fmt;
 
 use crate::canon;
@@ -52,7 +58,7 @@ fn push_pair(pairs: &mut Vec<Pair>, name: &str, value: Option<&str>, canonize: C
 }
 
 macro_rules! pair_list {
-    ($(#[$doc:meta])* $name:ident, $canonize:path) => {
+    ($(#[$doc:meta])* $name:ident, $canonize:path, $canonize_name:path) => {
         $(#[$doc])*
         ///
         /// Names and values are held in canonical form: [`push`](Self::push),
@@ -96,10 +102,18 @@ macro_rules! pair_list {
             /// The value of the first pair named `name`, canonized and
             /// compared case-insensitively: `Some(None)` when it has no value.
             pub fn get(&self, name: &str) -> Option<Option<&str>> {
-                let (name, _) = $canonize(name, None);
-                self.iter()
-                    .find(|(n, _)| n.eq_ignore_ascii_case(&name))
-                    .map(|(_, v)| v)
+                let find = |name: &str| {
+                    self.iter()
+                        .find(|(n, _)| n.eq_ignore_ascii_case(name))
+                        .map(|(_, v)| v)
+                };
+                if self.0.is_empty() {
+                    return None;
+                }
+                find(name).or_else(|| match $canonize_name(name) {
+                    Cow::Owned(canonical) => find(&canonical),
+                    Cow::Borrowed(_) => None,
+                })
             }
 
             /// Append a pair, canonized.
@@ -116,7 +130,15 @@ macro_rules! pair_list {
             /// Remove every pair named `name`, canonized and compared
             /// case-insensitively, and return how many were removed.
             pub fn remove(&mut self, name: &str) -> usize {
-                let (name, _) = $canonize(name, None);
+                let held = self
+                    .0
+                    .iter()
+                    .any(|(n, _)| n.eq_ignore_ascii_case(name));
+                let name = if held {
+                    Cow::Borrowed(name)
+                } else {
+                    $canonize_name(name)
+                };
                 let before = self.0.len();
                 self.0
                     .retain(|(n, _)| !n.eq_ignore_ascii_case(&name));
@@ -201,20 +223,23 @@ macro_rules! pair_list {
 pair_list!(
     /// Parameters of a SIP URI after the host, or of a tel: URI.
     Params,
-    canon::canonize_param
+    canon::canonize_param,
+    canon::param_name
 );
 
 pair_list!(
     /// Parameters inside a SIP URI's userinfo, after the user part.
     UserParams,
-    canon::canonize_user_param
+    canon::canonize_user_param,
+    canon::user_param_name
 );
 
 pair_list!(
     /// Headers of a SIP URI, after `?`. A header written without `=` has no
     /// value, and one written `name=` has an empty one.
     Headers,
-    canon::canonize_header
+    canon::canonize_header,
+    canon::header_name
 );
 
 /// Write each pair as `;name` or `;name=value`.

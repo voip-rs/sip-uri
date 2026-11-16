@@ -154,7 +154,7 @@ pub enum HostMask {
 pub struct Redaction {
     user: UserMask,
     headers: HeaderMask,
-    params: Arc<[String]>,
+    params: Arc<Params>,
     urn: OpaqueMask,
     other: OpaqueMask,
     host: HostMask,
@@ -166,7 +166,7 @@ impl Default for Redaction {
         Redaction {
             user: UserMask::Full,
             headers: HeaderMask::Values,
-            params: Arc::from([]),
+            params: Arc::default(),
             urn: OpaqueMask::Masked,
             other: OpaqueMask::Masked,
             host: HostMask::Visible,
@@ -301,31 +301,21 @@ impl Redaction {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        self.params = names
+        let names: Params = names
             .into_iter()
-            .filter_map(|name| canonical_param_name(name.as_ref()))
+            .map(|name| (name, None::<&str>))
             .collect();
+        self.params = Arc::new(names);
         self
     }
 
     /// Whether [`params`](Redaction::params) names `name`, both canonized
-    /// and compared ignoring ASCII case.
+    /// and compared ignoring ASCII case, as [`Params::get`] finds a name.
     pub fn masks_param(&self, name: &str) -> bool {
-        canonical_param_name(name).is_some_and(|name| {
-            self.params
-                .iter()
-                .any(|p| p.eq_ignore_ascii_case(&name))
-        })
+        self.params
+            .get(name)
+            .is_some()
     }
-}
-
-/// `name` as a param list holds it, or `None` for an empty name.
-fn canonical_param_name(name: &str) -> Option<String> {
-    Params::new()
-        .with(name, None)
-        .iter()
-        .next()
-        .map(|(name, _)| name.to_string())
 }
 
 /// [`fmt::Display`] adapter returned by [`UriRedact::redacted`]. Its Debug

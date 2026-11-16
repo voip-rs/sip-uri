@@ -1,5 +1,7 @@
 //! Canonical form of each URI component, and the literal sets deciding it.
 
+use std::borrow::Cow;
+
 pub mod encoding;
 
 /// RFC 3261 §25: `unreserved = alphanum / mark`
@@ -151,6 +153,19 @@ fn canonize(input: &str, decode: fn(u8) -> bool, keep: fn(u8) -> bool) -> String
     out
 }
 
+/// [`canonize`], borrowing `input` when it is already canonical: no escape,
+/// and every byte one `keep` holds literal.
+fn canonize_cow(input: &str, decode: fn(u8) -> bool, keep: fn(u8) -> bool) -> Cow<'_, str> {
+    if input
+        .bytes()
+        .all(|b| b != b'%' && b.is_ascii() && keep(b))
+    {
+        Cow::Borrowed(input)
+    } else {
+        Cow::Owned(canonize(input, decode, keep))
+    }
+}
+
 fn push_octet(out: &mut String, b: u8, literal: fn(u8) -> bool) {
     if b.is_ascii() && literal(b) {
         out.push(b as char);
@@ -206,6 +221,22 @@ pub(crate) fn canonize_param(name: &str, value: Option<&str>) -> (String, Option
 pub(crate) fn canonize_header(name: &str, value: Option<&str>) -> (String, Option<String>) {
     let one = |s: &str| canonize(s, is_unreserved, is_hnv_literal);
     (one(name), value.map(one))
+}
+
+/// A user-param name as [`canonize_user_param`] holds it, borrowed when
+/// unchanged.
+pub(crate) fn user_param_name(name: &str) -> Cow<'_, str> {
+    canonize_cow(name, is_unreserved, is_user_param_name_literal)
+}
+
+/// A param name as [`canonize_param`] holds it, borrowed when unchanged.
+pub(crate) fn param_name(name: &str) -> Cow<'_, str> {
+    canonize_cow(name, is_unreserved, is_param_literal)
+}
+
+/// A header name as [`canonize_header`] holds it, borrowed when unchanged.
+pub(crate) fn header_name(name: &str) -> Cow<'_, str> {
+    canonize_cow(name, is_unreserved, is_hnv_literal)
 }
 
 /// Canonize a tel: number.
