@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use sip_uri_types::OtherUri;
 use sip_uri_types::Pairs;
+use sip_uri_types::Params;
 use sip_uri_types::SipUri;
 use sip_uri_types::TelUri;
 use sip_uri_types::Uri;
@@ -261,16 +262,20 @@ impl Redaction {
         self.headers(HeaderMask::Dropped)
     }
 
-    /// Render the values of params with these names, compared
+    /// Render the values of params with these names, canonized and compared
     /// case-insensitively, as `***`, in place of any set before.
     pub fn params<I, S>(mut self, names: I) -> Self
     where
         I: IntoIterator<Item = S>,
-        S: Into<String>,
+        S: AsRef<str>,
     {
-        self.params = names
+        let canonical: Params = names
             .into_iter()
-            .map(Into::into)
+            .map(|name| (name, None::<&str>))
+            .collect();
+        self.params = canonical
+            .iter()
+            .map(|(name, _)| name.to_string())
             .collect();
         self
     }

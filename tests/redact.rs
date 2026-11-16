@@ -53,6 +53,17 @@ fn masks_param_ignores_ascii_case() {
 }
 
 #[test]
+fn masked_param_names_match_however_they_are_spelled() {
+    let uri = sip("sip:example.com;a%20b=secret;token=secret2");
+    let how = Redaction::default().params(["a b", "tok%65n"]);
+    assert_eq!(
+        uri.redacted(&how)
+            .to_string(),
+        "sip:example.com;a%20b=***;token=***"
+    );
+}
+
+#[test]
 fn user_mask_reads_back() {
     assert_eq!(Redaction::default().user_mask(), UserMask::Full);
     assert_eq!(
