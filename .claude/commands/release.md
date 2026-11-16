@@ -45,6 +45,7 @@ scripts/release-check.sh
    - Describe user-visible behavior, not implementation details.
    - Merge related commits for the same feature into one bullet.
    - No git hashes, no raw commit subjects, no co-author lines.
+   - A breaking release opens, under its tag line, with one sentence pointing at its migration guide on docs.rs (`https://docs.rs/sip-uri/<version>/sip_uri/migrating_from_<old>/index.html`), and that guide covers every break the changelog lists.
 
    File format (becomes the tag annotation verbatim):
    ```
