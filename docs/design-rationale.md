@@ -16,10 +16,6 @@ Params and headers are opaque collections, so their storage can change without r
 
 A scheme, host, NID, NSS or tel number that is missing or unreadable is `None` with a warning, rather than the whole URI failing. A broken port or host costs that field, never the user part beside it. A constructor given an empty component holds it as absent wherever its delimiter printed alone would re-parse as nothing. User-params exist only beside a user, so every path that changes either one, mutable access included, restores that pairing.
 
-## `Uri` without a scheme is `Other`, never a guessed type
-
-Input without a scheme is kept as `Other` with a warning, even when it looks like `user@host`. Only the caller knows its context says SIP, and it re-parses as `SipUri` to get that reading.
-
 ## Text outside the URI grammar is kept, never stripped
 
 The parser never trims whitespace or removes brackets: text it cannot place stays, escaped, in the component it falls in, with a warning, and stripping what a header wrapped around the URI is the caller's job. Only text after the host or port that starts no component is dropped, and its warning says so. When the scheme cannot be read, everything up to `@` is the user part and its `:` starts no password, so a number behind a malformed prefix lands where a reader looks for it.

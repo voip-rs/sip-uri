@@ -1,3 +1,10 @@
+//! Parsing into the `Uri` sum type: the scheme picks the typed parser, and
+//! anything else is `Other`.
+//!
+//! Text without a scheme is `Other` with a warning, never a guessed SIP URI,
+//! even when it reads as `user@host`: only the caller knows its context says
+//! SIP, and it re-parses as `SipUri` for that reading.
+
 use crate::error::ParseError;
 use crate::grammar::{self, SchemeSplit};
 use crate::warning::{Component, Parsed, WarningCode, Warnings};
