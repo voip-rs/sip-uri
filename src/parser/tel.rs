@@ -85,10 +85,7 @@ pub(crate) fn parse_split(
 
     let tel = TelUri::from(parts);
     if !number_str.is_empty() {
-        let has_context = tel
-            .param("phone-context")
-            .is_some();
-        warn_number(number_str, has_context, &mut warnings);
+        warn_number(number_str, &tel, &mut warnings);
     }
     Ok(warnings.finish(tel))
 }
@@ -98,7 +95,7 @@ fn is_local_digit(b: u8) -> bool {
     b.is_ascii_hexdigit() || matches!(b, b'*' | b'#')
 }
 
-fn warn_number(number: &str, has_context: bool, warnings: &mut Warnings) {
+fn warn_number(number: &str, tel: &TelUri, warnings: &mut Warnings) {
     let global = number.strip_prefix('+');
     let digits = global.unwrap_or(number);
     type ByteClass = fn(u8) -> bool;
@@ -119,7 +116,11 @@ fn warn_number(number: &str, has_context: bool, warnings: &mut Warnings) {
     {
         warnings.push(Component::Number, WarningCode::NoDigits, number, 0);
     }
-    if global.is_none() && !has_context {
+    if global.is_none()
+        && tel
+            .param("phone-context")
+            .is_none()
+    {
         warnings.push(
             Component::Number,
             WarningCode::MissingPhoneContext,
