@@ -71,9 +71,9 @@ impl From<TelUri> for TelUriParts {
 impl TelUri {
     /// Create a new tel: URI with the given number, `+` first for a global
     /// one. A delimiter or byte outside the number grammar is escaped.
-    pub fn new(number: impl AsRef<str>) -> Self {
+    pub fn new<'a>(number: impl Into<Cow<'a, str>>) -> Self {
         TelUri {
-            number: hold_number(number.as_ref()),
+            number: hold_number(number.into()),
             params: Params::new(),
             fragment: None,
         }
@@ -133,8 +133,8 @@ impl TelUri {
     }
 
     /// Set the fragment component, escaping any delimiter in it.
-    pub fn with_fragment(mut self, fragment: impl AsRef<str>) -> Self {
-        self.fragment = hold_fragment(fragment.as_ref());
+    pub fn with_fragment<'a>(mut self, fragment: impl Into<Cow<'a, str>>) -> Self {
+        self.fragment = hold_fragment(fragment.into());
         self
     }
 }
@@ -166,6 +166,16 @@ mod tests {
     fn builder() {
         let uri = TelUri::new("+15551234567").with_param("cpc", Some("emergency"));
         assert_eq!(uri.to_string(), "tel:+15551234567;cpc=emergency");
+    }
+
+    #[test]
+    fn builders_hold_an_owned_canonical_string() {
+        let number = String::from("+15551234567");
+        let fragment = String::from("f");
+        let buffers = [number.as_ptr(), fragment.as_ptr()].map(Some);
+        let uri = TelUri::new(number).with_fragment(fragment);
+        let held = [uri.number(), uri.fragment()].map(|c| c.map(str::as_ptr));
+        assert_eq!(held, buffers);
     }
 
     #[test]

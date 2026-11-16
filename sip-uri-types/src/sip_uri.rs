@@ -235,8 +235,8 @@ impl SipUri {
 
     /// Set the user part, canonized like parsed text: a delimiter or byte
     /// outside the user grammar is escaped, so it cannot add user-params.
-    pub fn with_user(mut self, user: impl AsRef<str>) -> Self {
-        self.user = hold_user(Some(canon::canonize_user(user.as_ref())), &self.user_params);
+    pub fn with_user<'a>(mut self, user: impl Into<Cow<'a, str>>) -> Self {
+        self.user = hold_user(Some(canon::canonize_user(user.into())), &self.user_params);
         self
     }
 
@@ -257,8 +257,8 @@ impl SipUri {
     }
 
     /// Set the password, escaping any delimiter in it.
-    pub fn with_password(mut self, password: impl AsRef<str>) -> Self {
-        self.password = Some(canon::canonize_password(password.as_ref()));
+    pub fn with_password<'a>(mut self, password: impl Into<Cow<'a, str>>) -> Self {
+        self.password = Some(canon::canonize_password(password.into()));
         self
     }
 
@@ -291,8 +291,8 @@ impl SipUri {
     }
 
     /// Set the fragment component, escaping any delimiter in it.
-    pub fn with_fragment(mut self, fragment: impl AsRef<str>) -> Self {
-        self.fragment = hold_fragment(fragment.as_ref());
+    pub fn with_fragment<'a>(mut self, fragment: impl Into<Cow<'a, str>>) -> Self {
+        self.fragment = hold_fragment(fragment.into());
         self
     }
 
@@ -562,6 +562,20 @@ mod tests {
             .with_user("alice")
             .with_param("transport", Some("tcp"));
         assert_eq!(uri.to_string(), "sip:alice@example.com;transport=tcp");
+    }
+
+    #[test]
+    fn builders_hold_an_owned_canonical_string() {
+        let user = String::from("alice");
+        let password = String::from("secret");
+        let fragment = String::from("f");
+        let buffers = [user.as_ptr(), password.as_ptr(), fragment.as_ptr()].map(Some);
+        let uri = SipUri::new(Host::Hostname("example.com".into()))
+            .with_user(user)
+            .with_password(password)
+            .with_fragment(fragment);
+        let held = [uri.user(), uri.password(), uri.fragment()].map(|c| c.map(str::as_ptr));
+        assert_eq!(held, buffers);
     }
 
     #[test]

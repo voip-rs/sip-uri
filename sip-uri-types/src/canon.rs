@@ -390,10 +390,20 @@ const fn is_other_literal(c: u8) -> bool {
     !c.is_ascii_control() && !matches!(c, b' ' | b'<' | b'>' | b'"')
 }
 
-/// Canonize the text of an unrecognized URI, decoding nothing.
-pub(crate) fn canonize_other(input: &str) -> String {
+/// Canonize the text of an unrecognized URI, decoding nothing. An owned
+/// `input` already canonical is returned as it is, without a copy.
+pub(crate) fn canonize_other<'a>(input: impl Into<Cow<'a, str>>) -> String {
+    let input = input.into();
+    let Some(start) = input
+        .bytes()
+        .position(|b| !OTHER.holds(b))
+    else {
+        return input.into_owned();
+    };
     let mut out = String::with_capacity(input.len());
-    push_other(&mut out, input);
+    // The canonical prefix is ASCII, so `start` is a char boundary.
+    out.push_str(&input[..start]);
+    push_other(&mut out, &input[start..]);
     out
 }
 
@@ -452,7 +462,7 @@ mod tests {
             |s| canonize_urn_q(s),
             |s| canonize_nid(s),
             |s| canonize_hostname(s),
-            canonize_other,
+            |s| canonize_other(s),
         ];
         let input = "aZ%41%3b;=?@#% %zz%e2%9c%93é/:&+$,[]!~*'()";
         for f in fns {

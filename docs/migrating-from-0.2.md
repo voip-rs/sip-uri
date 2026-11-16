@@ -178,6 +178,8 @@ Every field starts absent, the scheme included: without `parts.scheme` the URI p
 
 A constructor given an empty component stores it as absent wherever its delimiter alone would re-parse as nothing: `with_user("")` gives a URI with no user, while `with_password("")` keeps an empty password.
 
+`SipUri::with_user`, `with_password` and `with_fragment`, `TelUri::new` and `with_fragment`, `UrnUri::new`, `with_r_component`, `with_q_component` and `with_f_component`, and the text of `OtherUri::new` take `impl Into<Cow<str>>`, so a `&str` is copied once, escaped as it is copied, and an owned `String` already canonical is held without a copy. `&str` and `String` callers are unaffected; an `Arc<str>` needs `&*s`, a `&&str` needs `*s`, and a custom `AsRef<str>` type needs `.as_ref()`.
+
 ## Params
 
 `param()` on `SipUri` and `TelUri` returns `Option<Option<&str>>`, which tells a missing param from one present without a value:

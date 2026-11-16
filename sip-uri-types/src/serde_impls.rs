@@ -293,7 +293,7 @@ impl<'de> Deserialize<'de> for OtherUri {
             other
                 .scheme
                 .as_deref(),
-            &other.rest,
+            other.rest,
         )
         .map_err(D::Error::custom)
     }

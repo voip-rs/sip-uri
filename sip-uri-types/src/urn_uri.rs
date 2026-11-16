@@ -94,10 +94,10 @@ impl UrnUri {
     /// Create a new URN with the given NID and NSS.
     ///
     /// Both are canonized like parsed text, and the NID is lowercased.
-    pub fn new(nid: impl AsRef<str>, nss: impl AsRef<str>) -> Self {
+    pub fn new<'a>(nid: impl Into<Cow<'a, str>>, nss: impl Into<Cow<'a, str>>) -> Self {
         UrnUri {
-            nid: hold_nid(nid.as_ref()),
-            nss: hold_nss(nss.as_ref()),
+            nid: hold_nid(nid.into()),
+            nss: hold_nss(nss.into()),
             r_component: None,
             q_component: None,
             f_component: None,
@@ -116,20 +116,20 @@ impl UrnUri {
     }
 
     /// Set the resolution component (`?+`).
-    pub fn with_r_component(mut self, r: impl AsRef<str>) -> Self {
-        self.r_component = Some(canon::canonize_urn_r(r.as_ref()));
+    pub fn with_r_component<'a>(mut self, r: impl Into<Cow<'a, str>>) -> Self {
+        self.r_component = Some(canon::canonize_urn_r(r.into()));
         self
     }
 
     /// Set the query component (`?=`).
-    pub fn with_q_component(mut self, q: impl AsRef<str>) -> Self {
-        self.q_component = Some(canon::canonize_urn_q(q.as_ref()));
+    pub fn with_q_component<'a>(mut self, q: impl Into<Cow<'a, str>>) -> Self {
+        self.q_component = Some(canon::canonize_urn_q(q.into()));
         self
     }
 
     /// Set the fragment component (`#`).
-    pub fn with_f_component(mut self, f: impl AsRef<str>) -> Self {
-        self.f_component = Some(canon::canonize_fragment(f.as_ref()));
+    pub fn with_f_component<'a>(mut self, f: impl Into<Cow<'a, str>>) -> Self {
+        self.f_component = Some(canon::canonize_fragment(f.into()));
         self
     }
 
@@ -235,6 +235,29 @@ mod tests {
             urn.to_string(),
             "urn:example:resource?+resolve?=query#section"
         );
+    }
+
+    #[test]
+    fn builders_hold_an_owned_canonical_string() {
+        let parts = ["example", "resource", "r", "q", "f"].map(String::from);
+        let buffers: Vec<_> = parts
+            .iter()
+            .map(|p| Some(p.as_ptr()))
+            .collect();
+        let [nid, nss, r, q, f] = parts;
+        let urn = UrnUri::new(nid, nss)
+            .with_r_component(r)
+            .with_q_component(q)
+            .with_f_component(f);
+        let held = [
+            urn.nid(),
+            urn.nss(),
+            urn.r_component(),
+            urn.q_component(),
+            urn.f_component(),
+        ]
+        .map(|c| c.map(str::as_ptr));
+        assert_eq!(held.to_vec(), buffers);
     }
 
     #[test]

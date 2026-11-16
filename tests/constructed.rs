@@ -845,7 +845,7 @@ fn no_cr_lf_or_nul_survives_display() {
                 .with_f_component(t("f$"))
                 .to_string(),
         );
-        if let Ok(other) = OtherUri::new(Some("x-test"), &t("a$")) {
+        if let Ok(other) = OtherUri::new(Some("x-test"), t("a$")) {
             shown.push(other.to_string());
         }
         for text in shown {
