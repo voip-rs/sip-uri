@@ -56,8 +56,6 @@ Debug masks the password, and every type's Debug that holds a URI masks the same
 
 `Eq` and `Hash` compare the canonical form component by component, so param order, param and header name case, and a tel: number's visual separators all count. RFC equivalence rests on defaults and per-param rules that could not be revisited without changing the identity of every stored value, so it is a separate function in sip-uri, and the canonical form never reorders, lowercases or strips to approximate it.
 
-Where the RFCs leave the comparison open, equivalence errs toward not equivalent: header values and fragments compare exactly, a param named more than once compares by its first value, and `transport` joins the params that must match whenever either side has one, as RFC 3261's own non-equivalence example requires.
-
 ## Serde is structured and goes through the constructor
 
 A URI serializes as its parts and deserializes through the canonizing constructor, so a deserialized value holds the same canonical form as a parsed one. A string form in sip-uri-types would need a second parser there, drifting from sip-uri's; the string adapter lives in sip-uri for callers that want one. A deserialization error names the field and what it expected, never the value it read, since serde's own messages quote it.

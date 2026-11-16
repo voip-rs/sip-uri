@@ -1,3 +1,12 @@
+//! RFC URI equivalence, apart from `Eq`, which is canonical identity.
+//!
+//! The rules follow each scheme's RFC. `transport` must match whenever
+//! either URI has it, though RFC 3261 §19.1.4's uri-parameter list names
+//! only user, ttl, method and maddr: the same section says a URI omitting a
+//! component with a default value, the transport-parameter included, does
+//! not match one stating it, and lists `sip:bob@biloxi.com` and
+//! `sip:bob@biloxi.com;transport=udp` as not equivalent.
+
 use sip_uri_types::{Headers, Params, SipUri, TelUri, Uri, UrnUri};
 
 mod sealed {
