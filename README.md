@@ -19,9 +19,8 @@ assert_eq!(uri.param("transport"), Some(Some("tcp")));
 
 `UriParse` is the parser for every URI type, so import it beside the type; [TelUri](#teluri) and [UrnUri](#urnuri) parse the same way.
 
-```toml
-[dependencies]
-sip-uri = "0.3.0-rc.1"
+```sh
+cargo add sip-uri
 ```
 
 ## Types
@@ -189,7 +188,7 @@ canonical comparison.
 
 This crate parses URIs only. `"Alice" <sip:alice@example.com>;tag=abc` is
 header grammar: parse it with
-[`SipHeaderAddr`](https://docs.rs/sip-header/%5E1.0.0-beta/sip_header/struct.SipHeaderAddr.html)
+[`SipHeaderAddr`](https://docs.rs/sip-header/latest/sip_header/struct.SipHeaderAddr.html)
 from [`sip-header`](https://crates.io/crates/sip-header), which handles display
 names, URIs and header-level parameters and re-exports this crate. Code
 written against sip-uri 0.2's `NameAddr` moves to `SipHeaderAddr`.

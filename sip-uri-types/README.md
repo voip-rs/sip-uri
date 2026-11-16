@@ -6,9 +6,8 @@ Each component is held in one canonical form, whether the value was built or par
 
 Parsing, warnings and log redaction live in [sip-uri](https://crates.io/crates/sip-uri), which parses into these types through its [`UriParse`](https://docs.rs/sip-uri/latest/sip_uri/trait.UriParse.html) trait and re-exports them. This crate has no parser of its own and no `FromStr`.
 
-```toml
-[dependencies]
-sip-uri-types = "1.0.0-rc.1"
+```sh
+cargo add sip-uri-types
 ```
 
 ```rust
