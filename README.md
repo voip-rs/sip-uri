@@ -311,6 +311,33 @@ Adapters exist for `uri`, `sip_uri`, `tel_uri`, `urn_uri` and `host`, each with 
 
 0.3 parses non-conformant input with typed warnings instead of failing, holds every component in one canonical form, and moves the value types to sip-uri-types. [docs/migrating-from-0.2.md](docs/migrating-from-0.2.md) explains each change and why, with before/after code.
 
+## Performance
+
+sip-uri is built for bulk log processing, not only for one URI per call. The
+workload it is held to is
+[freeswitch-sofia-trace-parser](https://github.com/voip-rs/freeswitch-sofia-trace-parser),
+which reads multi-gigabyte FreeSWITCH SIP trace dumps at hundreds of megabytes
+per second per core, through sip-header, whose addresses parse with sip-uri.
+Once a scan reads a URI field, a From, a To or a Request-URI on every message,
+sip-uri parses once per message, and the URI parser becomes what limits a scan
+of gigabytes. Speed is therefore a requirement here, measured rather than
+assumed:
+
+- `benches/count.rs` runs fixed workloads over a synthetic corpus, and
+  `scripts/bench-compare.sh <ref>` compares the instructions each retires
+  against another commit under `perf stat`. Every release runs it against the
+  previous one and stops on a regression.
+- Components already in canonical form, the common case on real traffic, are
+  checked with a byte-class table and held without a copy; a param or header
+  list keeps all its pairs in one buffer, so a parsed URI costs a handful of
+  allocations rather than several per param.
+- That buffer is read with unchecked slicing, the crate's only `unsafe`, since
+  bounds checks on every name and value read cost a measured 12% on lookups
+  and 5% on Display.
+  The spans it reads are written only by the list itself; a list whose text
+  would pass 4 GiB is refused (a dropped pair with a warning when parsing, an
+  error from serde and from `try_push`) instead of overflowing them.
+
 ## Design
 
 - **Minimal dependencies** — sip-uri depends on sip-uri-types and, with the `serde` feature, serde; sip-uri-types depends on nothing but an optional `serde`. Not even `percent-encoding`: the subset needed is trivial and avoids transitive dep churn.
