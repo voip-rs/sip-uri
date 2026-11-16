@@ -15,17 +15,18 @@ pub(crate) fn parse(s: &str) -> Result<Parsed<Uri>, ParseError> {
         return Err(ParseError::Empty);
     }
     let mut warnings = Warnings::new(s);
-    let other = match grammar::split_scheme(s) {
+    let split = grammar::split_scheme(s);
+    let other = match split {
         SchemeSplit::Named(scheme, _) if scheme.eq_ignore_ascii_case("tel") => {
-            return Ok(super::tel::parse(s)?.map(Uri::Tel));
+            return Ok(super::tel::parse_split(s, split)?.map(Uri::Tel));
         }
         SchemeSplit::Named(scheme, _)
             if scheme.eq_ignore_ascii_case("sip") || scheme.eq_ignore_ascii_case("sips") =>
         {
-            return Ok(super::sip::parse(s)?.map(Uri::Sip));
+            return Ok(super::sip::parse_split(s, split)?.map(Uri::Sip));
         }
         SchemeSplit::Named(scheme, _) if scheme.eq_ignore_ascii_case("urn") => {
-            return Ok(super::urn::parse(s)?.map(Uri::Urn));
+            return Ok(super::urn::parse_split(s, split)?.map(Uri::Urn));
         }
         SchemeSplit::Named(scheme, rest) => {
             warnings.charset(Component::Other, rest, grammar::RFC3986);

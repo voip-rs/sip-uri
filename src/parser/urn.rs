@@ -17,13 +17,21 @@ fn is_valid_nid(nid: &str) -> bool {
 }
 
 pub(crate) fn parse(input: &str) -> Result<Parsed<UrnUri>, ParseError> {
+    parse_split(input, grammar::split_scheme(input))
+}
+
+/// [`parse`] of `input`, whose scheme `split` already read.
+pub(crate) fn parse_split(
+    input: &str,
+    split: SchemeSplit<'_>,
+) -> Result<Parsed<UrnUri>, ParseError> {
     if input.is_empty() {
         return Err(ParseError::Empty);
     }
     let mut warnings = Warnings::new(input);
     let mut parts = UrnUriParts::default();
 
-    let rest = match grammar::split_scheme(input) {
+    let rest = match split {
         SchemeSplit::Named(s, rest) if s.eq_ignore_ascii_case("urn") => rest,
         SchemeSplit::Named(..) => return Err(ParseError::SchemeMismatch),
         SchemeSplit::Invalid => {

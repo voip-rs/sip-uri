@@ -16,13 +16,21 @@ fn is_phonedigit_hex(c: u8) -> bool {
 }
 
 pub(crate) fn parse(input: &str) -> Result<Parsed<TelUri>, ParseError> {
+    parse_split(input, grammar::split_scheme(input))
+}
+
+/// [`parse`] of `input`, whose scheme `split` already read.
+pub(crate) fn parse_split(
+    input: &str,
+    split: SchemeSplit<'_>,
+) -> Result<Parsed<TelUri>, ParseError> {
     if input.is_empty() {
         return Err(ParseError::Empty);
     }
     let mut warnings = Warnings::new(input);
     let mut parts = TelUriParts::default();
 
-    let rest = match grammar::split_scheme(input) {
+    let rest = match split {
         SchemeSplit::Named(s, rest) if s.eq_ignore_ascii_case("tel") => rest,
         SchemeSplit::Named(..) => return Err(ParseError::SchemeMismatch),
         SchemeSplit::Invalid => {

@@ -21,13 +21,21 @@ use crate::warning::{Component, Parsed, WarningCode, Warnings};
 use sip_uri_types::{Scheme, SipUri, SipUriParts};
 
 pub(crate) fn parse(input: &str) -> Result<Parsed<SipUri>, ParseError> {
+    parse_split(input, grammar::split_scheme(input))
+}
+
+/// [`parse`] of `input`, whose scheme `split` already read.
+pub(crate) fn parse_split(
+    input: &str,
+    split: SchemeSplit<'_>,
+) -> Result<Parsed<SipUri>, ParseError> {
     if input.is_empty() {
         return Err(ParseError::Empty);
     }
     let mut warnings = Warnings::new(input);
     let mut parts = SipUriParts::default();
 
-    let (rest, colon_starts_password) = match grammar::split_scheme(input) {
+    let (rest, colon_starts_password) = match split {
         SchemeSplit::Named(s, rest) if s.eq_ignore_ascii_case("sip") => {
             parts.scheme = Some(Scheme::Sip);
             (rest, true)
