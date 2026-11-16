@@ -14,7 +14,7 @@ Params and headers are opaque collections, so their storage can change without r
 
 ## A spec-required component holds absence, and a warning reports it
 
-A scheme, host, NID, NSS or tel number that is missing or unreadable is `None` with a warning, rather than the whole URI failing. A broken port or host costs that field, never the user part beside it. A constructor given an empty component holds it as absent wherever its delimiter printed alone would re-parse as nothing. User-params exist only beside a user, so every path that changes either one, mutable access included, restores that pairing.
+A host, NID, NSS or tel number that is missing or unreadable is `None` with a warning, rather than the whole URI failing; so is the scheme of a `SipUri` or `Other`, while a tel: or URN value implies its scheme and prints it. A broken port or host costs that field, never the user part beside it. A constructor given an empty component holds it as absent wherever its delimiter printed alone would re-parse as nothing. User-params exist only beside a user, so every path that changes either one, mutable access included, restores that pairing.
 
 ## Text outside the URI grammar is kept, never stripped
 

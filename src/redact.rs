@@ -25,7 +25,11 @@
 //! The default never chases an identity a sender put where the grammar
 //! places none, such as a number in host or namespace position: that sender
 //! owns the exposure, and masking those positions is an option the caller
-//! turns on.
+//! turns on. The default also shows what lies outside the positions above:
+//! a SIP fragment, which runs from the first `#` to the end, the name of a
+//! header written without a value, and a URL's fragment. Text with no
+//! readable scheme, such as `*` or a bare host and port, is `Other` and
+//! renders as `***`.
 
 use std::fmt;
 use std::sync::Arc;
@@ -49,7 +53,8 @@ pub enum UserMask {
     /// The whole userinfo, user-params and password included, becomes `***`.
     Full,
     /// Every digit outside a `%XX` escape but the last `n` becomes `x`;
-    /// escapes and other characters stay. Suits telephone numbers.
+    /// escapes and other characters stay. Suits telephone numbers. An `ext`
+    /// or `isub` is masked on its own, so one of `n` digits or fewer shows.
     KeepLast(usize),
     /// The user part is shown as Display writes it.
     Visible,
@@ -88,7 +93,8 @@ pub enum OpaqueMask {
     Visible,
 }
 
-/// How the host of a SIP URI is rendered by [`Redaction`].
+/// How the host of a SIP URI is rendered by [`Redaction`]. A host carried
+/// in a param, such as `maddr`, is masked through [`Redaction::params`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum HostMask {
@@ -111,7 +117,8 @@ pub enum HostMask {
 /// routing params such as `rn` or `cic` are public and stay shown; a number
 /// a sender put in host or NID position shows unless [`HostMask::Full`]
 /// or [`OpaqueMask::Full`] masks it. A password is `***` under every
-/// [`UserMask`].
+/// [`UserMask`]; when the scheme cannot be read, a `:` starts no password,
+/// so that text stays in the user part and follows the user mask.
 ///
 /// A policy owns its data and clones cheaply, so one read from configuration
 /// is built once and lent to every rendering:

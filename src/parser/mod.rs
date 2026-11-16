@@ -42,7 +42,7 @@ mod sealed {
 ///
 /// let parsed = SipUri::parse_with_warnings("sip:example.com:+5060").unwrap();
 /// assert_eq!(parsed.value.port(), Some(5060));
-/// assert_eq!(parsed.warnings[0].code, WarningCode::SignedPort);
+/// assert!(parsed.warnings.iter().any(|w| w.code == WarningCode::SignedPort));
 /// assert!(SipUri::parse_strict("sip:example.com:+5060").is_err());
 ///
 /// use sip_uri::Host;
@@ -51,7 +51,7 @@ mod sealed {
 /// assert!(Host::parse("[2001:db8::1]").is_ok());
 /// assert!(Host::parse("[198.51.100.1]").is_err());
 /// let parsed = Host::parse_with_warnings("example.com:5060").unwrap();
-/// assert_eq!(parsed.warnings[0].code, WarningCode::TrailingContent);
+/// assert!(parsed.warnings.iter().any(|w| w.code == WarningCode::TrailingContent));
 /// ```
 pub trait UriParse: Sized + sealed::Sealed {
     /// Parse, reporting accepted grammar breaches beside the value.

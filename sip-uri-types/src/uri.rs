@@ -236,7 +236,9 @@ impl Uri {
         }
     }
 
-    /// The scheme of this URI, lowercase, `None` when the input had none.
+    /// The scheme of this URI, lowercase: `None` for a `SipUri` or `Other`
+    /// read without one, always present for tel: and URN, whose type implies
+    /// it.
     pub fn scheme(&self) -> Option<&str> {
         match self {
             Uri::Sip(u) => u

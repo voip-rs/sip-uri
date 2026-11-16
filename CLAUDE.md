@@ -1,6 +1,6 @@
 ## Project Type
 
-SIP/tel/URN URI library: RFC 3261 (SIP/SIPS), RFC 3966 (tel:), RFC 8141 (URN). Workspace of two crates: `sip-uri-types` holds the value types (the surface crates exchange URIs through, changing only on identity), `sip-uri` holds parsing, warnings and redaction. Decisions and their reasons live in `docs/design-rationale.md`.
+SIP/tel/URN URI library: RFC 3261 (SIP/SIPS), RFC 3966 (tel:), RFC 8141 (URN). Workspace of two crates: `sip-uri-types` holds the value types (the surface crates exchange URIs through, changing only on identity), `sip-uri` holds parsing, warnings and redaction. Decisions and their reasons live in the notes at the top of the file that enforces each one, and in `docs/design-rationale.md` when they span files.
 
 The pre-commit hook runs across `--workspace --all-features`; it is the verification gate.
 

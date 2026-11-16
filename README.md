@@ -234,8 +234,8 @@ assert_eq!(encode_user(r#""foo""#), "%22foo%22");
 Parsing is best-effort: whatever an input breaks in the grammar, the parser
 returns what it could read, and `parse_with_warnings` reports each breach as a
 typed `ParseWarning` (component, code, byte position, whether the value
-survived). A missing or unreadable scheme, host, port, number, NID or NSS is
-`None` with a warning. The only errors are empty input, a scheme that belongs
+survived). A missing or unreadable host, port, number, NID or NSS, or the
+scheme of a `SipUri` or `Other`, is `None` with a warning. The only errors are empty input, a scheme that belongs
 to another type (`tel:` parsed as `SipUri`), for `Host` alone input with no
 readable host, and for `SipUri` input that leaves no component, such as `@`;
 `Uri` keeps anything else as `Other`. `parse` accepts exactly
@@ -247,8 +247,7 @@ use sip_uri::{Component, SipUri, UriParse, WarningCode};
 
 let parsed = SipUri::parse_with_warnings("sip:+15551234567@example.com:+5060").unwrap();
 assert_eq!(parsed.value.port(), Some(5060));
-assert_eq!(parsed.warnings[0].component, Component::Port);
-assert_eq!(parsed.warnings[0].code, WarningCode::SignedPort);
+assert!(parsed.warnings.iter().any(|w| w.component == Component::Port && w.code == WarningCode::SignedPort));
 ```
 
 `parse_strict` runs the same parser and returns the first warning as

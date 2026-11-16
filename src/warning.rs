@@ -267,7 +267,8 @@ impl WarningCode {
 pub enum WarningKind {
     /// Kept; re-serializing carries the same octets, canonically escaped.
     Recovered,
-    /// Dropped; re-serializing omits it.
+    /// Dropped; re-serializing omits it, except a tel: or URN scheme, which
+    /// the type implies and prints.
     Lost,
 }
 

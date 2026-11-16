@@ -1,3 +1,10 @@
+//! The URN value.
+//!
+//! An empty r-, q- or f-component is held as `Some("")`, unlike an empty
+//! SIP or tel: fragment, which is absent: `?+`, `?=` or `#` alone re-parses
+//! as that empty component, and the rationale's absence rule holds a
+//! component absent only where its delimiter alone re-parses as nothing.
+
 use std::fmt;
 
 use crate::canon;

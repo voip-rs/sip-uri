@@ -43,8 +43,7 @@ use sip_uri::{Component, SipUri, UriParse, WarningCode};
 
 let parsed = SipUri::parse_with_warnings("sip:+15551234567@example.com:+5060").unwrap();
 assert_eq!(parsed.value.port(), Some(5060));
-assert_eq!(parsed.warnings[0].component, Component::Port);
-assert_eq!(parsed.warnings[0].code, WarningCode::SignedPort);
+assert!(parsed.warnings.iter().any(|w| w.component == Component::Port && w.code == WarningCode::SignedPort));
 ```
 
 This matters wherever the application can't just drop the input. A server handling a call usually still has to handle it when the caller's URI is malformed, and what gets the sending side fixed is a report naming the breach. Rejecting loses the call; accepting silently loses the report.
@@ -84,7 +83,7 @@ if parsed.has_warnings() {
 }
 ```
 
-`Uri::parse_strict` also checks the text of a URI with an unrecognized scheme against RFC 3986's character set, so an `http:` link holding a space, `|`, `{}` or non-ASCII is refused where 0.3.0-rc.2 accepted it; `parse` still keeps it as `Uri::Other`.
+`Uri::parse_strict` also checks the text of a URI with an unrecognized scheme against RFC 3986's character set, so an `http:` link holding a space, `|`, `{}` or non-ASCII is refused; `parse` still keeps it as `Uri::Other`.
 
 `Parsed::into_strict()` does the same after the fact. The strict parser runs the lenient one and checks its warnings, so both accept and read input the same way; they differ only in what they return.
 
