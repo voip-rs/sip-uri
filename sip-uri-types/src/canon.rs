@@ -253,6 +253,16 @@ fn push_octet(out: &mut String, b: u8, literal: Class) {
 
 /// Lowercase every literal octet, leaving escape hex uppercase.
 fn lowercase_literals(mut s: String) -> String {
+    if !s
+        .bytes()
+        .any(|b| b.is_ascii_uppercase())
+    {
+        return s;
+    }
+    if !s.contains('%') {
+        s.make_ascii_lowercase();
+        return s;
+    }
     let mut i = 0;
     while i < s.len() {
         if s.as_bytes()[i] == b'%' {
@@ -341,6 +351,9 @@ pub(crate) fn canonize_urn_r<'a>(input: impl Into<Cow<'a, str>>) -> String {
 /// Escape a `?` before `=` in an r-component, since `?=` would start the
 /// q-component.
 fn escape_q_start(r: String) -> String {
+    if !r.contains("?=") {
+        return r;
+    }
     r.replace("?=", "%3F=")
 }
 
