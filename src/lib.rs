@@ -5,6 +5,37 @@
 //! percent-encoding. The value types come from [`sip_uri_types`] and are
 //! re-exported here.
 //!
+//! A crate that only passes URIs around depends on sip-uri-types, whose API
+//! changes only when a value's identity does. This crate holds the policy
+//! that moves more freely: parsing, warnings, redaction and equivalence.
+//!
+//! # Parsing and warnings
+//!
+//! [`UriParse`] parses text in three modes on one path.
+//! [`parse_with_warnings`](UriParse::parse_with_warnings) returns the value
+//! with every grammar breach it accepted as a [`ParseWarning`], which names
+//! the component, a [`WarningCode`] and the byte offset but never the text.
+//! [`parse`](UriParse::parse) drops the warnings, and
+//! [`parse_strict`](UriParse::parse_strict) fails on the first one. A lenient
+//! parse fails only when there is nothing to read or the scheme names
+//! another kind of URI; see [`ParseError`].
+//!
+//! # Logging and comparison
+//!
+//! `Display` writes the user part and password. Logs use
+//! [`UriRedact::redacted`] with a [`Redaction`], which masks every identity
+//! by default and is relaxed per deployment.
+//!
+//! `==` is canonical identity: param order and name case count.
+//! [`UriEquivalence`] is the RFC comparison, which is not transitive.
+//!
+//! # Features and MSRV
+//!
+//! `serde` serializes each value as its parts, through sip-uri-types, and
+//! adds the `serde_str` module for fields that hold a URI as text. The minimum
+//! supported Rust version is 1.70, 1.71 with `serde`; raising it is a minor
+//! release.
+//!
 //! # Examples
 //!
 //! ```
