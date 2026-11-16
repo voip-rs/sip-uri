@@ -146,6 +146,37 @@ fn tel_number_is_masked_by_default() {
 }
 
 #[test]
+fn params_carrying_a_number_are_masked_as_the_number() {
+    let tel = TelUri::parse(
+        "tel:5551234;phone-context=+1555;ext=1234;isub=9999;rn=+15559876543;cic=+15550000",
+    )
+    .unwrap();
+    assert_eq!(
+        tel.redacted(&Redaction::default())
+            .to_string(),
+        "tel:***;phone-context=+1555;ext=***;isub=***;rn=+15559876543;cic=+15550000"
+    );
+    assert_eq!(
+        tel.redacted(&Redaction::default().user(UserMask::KeepLast(2)))
+            .to_string(),
+        "tel:xxxxx34;phone-context=+1555;ext=xx34;isub=xx99;rn=+15559876543;cic=+15550000"
+    );
+    let domain = TelUri::parse("tel:5551234;phone-context=example.com").unwrap();
+    assert_eq!(
+        domain
+            .redacted(&Redaction::default())
+            .to_string(),
+        "tel:***;phone-context=example.com"
+    );
+    let sip = sip("sip:+15551234567;ext=1234@example.com;ext=1234");
+    assert_eq!(
+        sip.redacted(&Redaction::default().user(UserMask::KeepLast(2)))
+            .to_string(),
+        "sip:+xxxxxxxxx67;ext=xx34@example.com;ext=1234"
+    );
+}
+
+#[test]
 fn uri_dispatches_to_each_kind() {
     let sip = Uri::parse("sip:alice@example.com").unwrap();
     assert_eq!(

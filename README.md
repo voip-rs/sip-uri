@@ -258,7 +258,7 @@ input.
 
 - the whole userinfo, or a tel: number, becomes `***`;
 - every URI header value becomes `***` (`?Subject=***`), since headers such as `P-Asserted-Identity` carry identities; a header without a value stays its name alone;
-- params are shown, except those named in `params()`;
+- params are shown, except those named in `params()` and an `ext` or `isub` on a tel: URI or among SIP user-params, which are part of the subscriber's number and take the user mask the number takes; routing params such as `rn` and `cic` stay visible;
 - a URN keeps its NID and masks the rest (`urn:gsma:***`), and a URI of any other scheme keeps only its scheme (`http:***`, or `***` without one), since a device identifier or a malformed caller URI such as `<sip:…>` lands there; `urn(OpaqueMask::Visible)` and `other(OpaqueMask::Visible)` show them.
 
 A `Redaction` owns its policy and clones cheaply, so one built from configuration is stored once and lent to each `redacted(&how)` call. `Debug` writes a password as `***` but the user part as it is.

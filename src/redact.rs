@@ -65,8 +65,11 @@ pub enum OpaqueMask {
 /// carry identities: `sip:***@example.com?Subject=***`. It also masks a
 /// URN's NSS and everything after the scheme of an unrecognized URI, where
 /// device identifiers and malformed caller URIs land; see [`OpaqueMask`].
-/// Params are shown unless named in [`Redaction::params`]. A password is
-/// `***` under every [`UserMask`].
+/// Params are shown unless named in [`Redaction::params`], except that an
+/// `ext` or `isub` on a tel: URI or among SIP user-params, part of the
+/// subscriber's number, is masked by the [`UserMask`] as the number is.
+/// Routing params such as `rn` or `cic` stay shown. A password is `***` under every
+/// [`UserMask`].
 ///
 /// A policy owns its data and clones cheaply, so one read from configuration
 /// is built once and lent to every rendering:
@@ -278,11 +281,29 @@ fn is_digit(unit: &&str) -> bool {
     matches!(unit.as_bytes(), [d] if d.is_ascii_digit())
 }
 
-fn write_params(f: &mut fmt::Formatter<'_>, params: Pairs<'_>, how: &Redaction) -> fmt::Result {
+/// Whether a tel: param is part of the subscriber's own number: an
+/// extension or a subaddress. Routing and carrier params name a network,
+/// not the caller, and stay visible for debugging.
+fn carries_number(name: &str) -> bool {
+    name.eq_ignore_ascii_case("ext") || name.eq_ignore_ascii_case("isub")
+}
+
+/// Write params, masking named ones; with `tel` set, those that
+/// [carry a number](carries_number) are masked as the number is.
+fn write_params(
+    f: &mut fmt::Formatter<'_>,
+    params: Pairs<'_>,
+    how: &Redaction,
+    tel: bool,
+) -> fmt::Result {
     for (name, value) in params {
         write!(f, ";{name}")?;
         match value {
             Some(_) if how.masks_param(name) => write!(f, "={MASK}")?,
+            Some(v) if tel && carries_number(name) => {
+                f.write_str("=")?;
+                write_masked_user(f, v, how.user)?;
+            }
             Some(v) => write!(f, "={v}")?,
             None => {}
         }
@@ -313,6 +334,7 @@ impl fmt::Display for Redacted<'_, SipUri> {
                         uri.user_params()
                             .iter(),
                         how,
+                        true,
                     )?;
                 }
                 if uri
@@ -335,6 +357,7 @@ impl fmt::Display for Redacted<'_, SipUri> {
             uri.params()
                 .iter(),
             how,
+            false,
         )?;
         if how.headers != HeaderMask::Dropped {
             for (i, (name, value)) in uri
@@ -370,6 +393,7 @@ impl fmt::Display for Redacted<'_, TelUri> {
             uri.params()
                 .iter(),
             how,
+            true,
         )?;
         if let Some(frag) = uri.fragment() {
             write!(f, "#{frag}")?;
