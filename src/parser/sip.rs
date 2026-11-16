@@ -237,7 +237,7 @@ mod tests {
         let uri = SipUri::parse("sip:172.21.55.55").unwrap();
         assert_eq!(
             uri.host(),
-            Some(&Host::IPv4(Ipv4Addr::new(172, 21, 55, 55)))
+            Some(&Host::Ipv4(Ipv4Addr::new(172, 21, 55, 55)))
         );
     }
 
@@ -246,7 +246,7 @@ mod tests {
         let uri = SipUri::parse("sip:172.21.55.55:5060").unwrap();
         assert_eq!(
             uri.host(),
-            Some(&Host::IPv4(Ipv4Addr::new(172, 21, 55, 55)))
+            Some(&Host::Ipv4(Ipv4Addr::new(172, 21, 55, 55)))
         );
         assert_eq!(uri.port(), Some(5060));
     }
@@ -310,7 +310,7 @@ mod tests {
         assert_eq!(
             uri.host()
                 .unwrap(),
-            &Host::IPv6(
+            &Host::Ipv6(
                 "::1"
                     .parse()
                     .unwrap()

@@ -46,7 +46,7 @@ fn sofia_ipv4() {
     let uri = SipUri::parse("sip:172.21.55.55").unwrap();
     assert_eq!(
         uri.host(),
-        Some(&Host::IPv4(Ipv4Addr::new(172, 21, 55, 55)))
+        Some(&Host::Ipv4(Ipv4Addr::new(172, 21, 55, 55)))
     );
 }
 
@@ -55,7 +55,7 @@ fn sofia_ipv4_with_port() {
     let uri = SipUri::parse("sip:172.21.55.55:5060").unwrap();
     assert_eq!(
         uri.host(),
-        Some(&Host::IPv4(Ipv4Addr::new(172, 21, 55, 55)))
+        Some(&Host::Ipv4(Ipv4Addr::new(172, 21, 55, 55)))
     );
     assert_eq!(uri.port(), Some(5060));
 }
@@ -96,7 +96,7 @@ fn sofia_percent_encoded_quotes_in_user() {
     assert_eq!(uri.user(), Some("%22foo%22"));
     assert_eq!(
         uri.host(),
-        Some(&Host::IPv4(Ipv4Addr::new(172, 21, 55, 55)))
+        Some(&Host::Ipv4(Ipv4Addr::new(172, 21, 55, 55)))
     );
 }
 
@@ -116,7 +116,7 @@ fn sofia_user_with_slash_semicolon_password() {
 fn sofia_reserved_chars_in_user_ipv6() {
     let uri = SipUri::parse("sip:&=+$,;?/:&=+$,@[::1]:56001;param=+$,/:@&").unwrap();
     assert_eq!(uri.user(), Some("&=+$,"));
-    assert_eq!(uri.host(), Some(&Host::IPv6(Ipv6Addr::LOCALHOST)));
+    assert_eq!(uri.host(), Some(&Host::Ipv6(Ipv6Addr::LOCALHOST)));
     assert_eq!(uri.port(), Some(56001));
 }
 
@@ -126,7 +126,7 @@ fn sofia_hash_in_user() {
     let uri = SipUri::parse("SIP:#**00**#;foo=/bar@127.0.0.1").unwrap();
     assert_eq!(uri.user(), Some("#**00**#"));
     assert_eq!(pairs(uri.user_params()), [("foo", Some("/bar"))]);
-    assert_eq!(uri.host(), Some(&Host::IPv4(Ipv4Addr::new(127, 0, 0, 1))));
+    assert_eq!(uri.host(), Some(&Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1))));
 }
 
 #[test]
@@ -250,7 +250,7 @@ fn ng911_user_params_ipv4_user_phone() {
     );
     assert_eq!(
         sip.host(),
-        Some(&Host::IPv4(Ipv4Addr::new(198, 51, 100, 1)))
+        Some(&Host::Ipv4(Ipv4Addr::new(198, 51, 100, 1)))
     );
     assert_eq!(sip.param("user"), Some(Some("phone")));
 }
@@ -325,7 +325,7 @@ fn ng911_ipv6_with_port() {
     assert_eq!(
         uri.host()
             .unwrap(),
-        &Host::IPv6(
+        &Host::Ipv6(
             "2001:db8::1"
                 .parse::<Ipv6Addr>()
                 .unwrap()
@@ -343,7 +343,7 @@ fn ng911_ipv6_with_password() {
     assert_eq!(
         uri.host()
             .unwrap(),
-        &Host::IPv6(
+        &Host::Ipv6(
             "2001:db8::1"
                 .parse::<Ipv6Addr>()
                 .unwrap()
@@ -376,7 +376,7 @@ fn ng911_ipv6_without_port() {
     assert_eq!(
         sip.host()
             .unwrap(),
-        &Host::IPv6(
+        &Host::Ipv6(
             "2001:db8::8"
                 .parse::<Ipv6Addr>()
                 .unwrap()
@@ -507,7 +507,7 @@ fn ng911_multiple_userparams() {
     assert_eq!(uri.user(), Some("+15559876543"));
     assert_eq!(
         uri.host(),
-        Some(&Host::IPv4(Ipv4Addr::new(198, 51, 100, 1)))
+        Some(&Host::Ipv4(Ipv4Addr::new(198, 51, 100, 1)))
     );
     assert_eq!(
         pairs(uri.user_params()),
@@ -543,7 +543,7 @@ fn ng911_multiple_params_and_headers() {
 fn ng911_ipv4_with_port() {
     let uri = SipUri::parse("sip:1411@10.2.2.2:5061;user=phone").unwrap();
     assert_eq!(uri.user(), Some("1411"));
-    assert_eq!(uri.host(), Some(&Host::IPv4(Ipv4Addr::new(10, 2, 2, 2))));
+    assert_eq!(uri.host(), Some(&Host::Ipv4(Ipv4Addr::new(10, 2, 2, 2))));
     assert_eq!(uri.port(), Some(5061));
     assert_eq!(uri.param("user"), Some(Some("phone")));
 }
@@ -569,7 +569,7 @@ fn ng911_user_param_cpc() {
     assert_eq!(uri.user(), Some("5551230001"));
     assert_eq!(
         uri.host(),
-        Some(&Host::IPv4(Ipv4Addr::new(198, 51, 100, 2)))
+        Some(&Host::Ipv4(Ipv4Addr::new(198, 51, 100, 2)))
     );
     assert_eq!(pairs(uri.user_params()), [("cpc", Some("emergency"))]);
 }
@@ -722,7 +722,7 @@ fn canonical_percent_encoded_host() {
 
 #[test]
 fn builder_sip_uri() {
-    let uri = SipUri::new(Host::IPv4(Ipv4Addr::new(192, 168, 1, 1)))
+    let uri = SipUri::new(Host::Ipv4(Ipv4Addr::new(192, 168, 1, 1)))
         .with_scheme(Scheme::Sips)
         .with_user("alice")
         .with_port(5061)
@@ -732,7 +732,7 @@ fn builder_sip_uri() {
 
 #[test]
 fn builder_sip_uri_user_param() {
-    let uri = SipUri::new(Host::IPv4(Ipv4Addr::new(198, 51, 100, 1)))
+    let uri = SipUri::new(Host::Ipv4(Ipv4Addr::new(198, 51, 100, 1)))
         .with_user("+15551234567")
         .with_user_param("cpc", Some("emergency"))
         .with_user_param("oli", Some("0"))
@@ -759,7 +759,7 @@ fn builder_tel_uri() {
 fn sip_uri_no_user_ipv6() {
     let uri = SipUri::parse("sip:[::1]:5060").unwrap();
     assert_eq!(uri.user(), None);
-    assert_eq!(uri.host(), Some(&Host::IPv6(Ipv6Addr::LOCALHOST)));
+    assert_eq!(uri.host(), Some(&Host::Ipv6(Ipv6Addr::LOCALHOST)));
     assert_eq!(uri.port(), Some(5060));
 }
 

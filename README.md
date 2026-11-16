@@ -101,7 +101,7 @@ assert_eq!(uri.user_params().len(), 2);
 use sip_uri::{SipUri, Scheme, Host};
 use std::net::Ipv4Addr;
 
-let uri = SipUri::new(Host::IPv4(Ipv4Addr::new(198, 51, 100, 1)))
+let uri = SipUri::new(Host::Ipv4(Ipv4Addr::new(198, 51, 100, 1)))
     .with_scheme(Scheme::Sips)
     .with_user("+15551234567")
     .with_port(5061)
@@ -202,7 +202,7 @@ Every component holds one canonical form, whether parsed or built:
   (`%3d` -> `%3D`) or literal (a space in a user part -> `%20`)
 - A user part also keeps a literal `#`, and `%23` stays a distinct value
 - Hostnames are lowercased as ASCII only, with no IDNA, and a URI holds a
-  hostname that reads as an IPv4 address as `Host::IPv4`
+  hostname that reads as an IPv4 address as `Host::Ipv4`
 - Builders and parts structs take URI text, so `with_user("%2B1")` holds
   `%2B1`, not `+1`
 - `sip_uri::encoding` has one encoder and one decoder per component a builder

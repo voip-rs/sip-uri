@@ -138,7 +138,7 @@ What changes for existing code:
 | `with_user("x;cpc=1@evil")` | written verbatim | escaped, so it can't add params or change the host |
 | `TelUri::new("+1555;x=1")` | Display re-parses with a param `x` | `+1555%3Bx=1` |
 | `Host::Hostname("EXAMPLE.COM".into())` | kept as given | `example.com`, equal to the parsed host |
-| `Host::Hostname("198.51.100.1".into())` in a URI | kept as a hostname | held as `Host::IPv4`, equal to the parsed host |
+| `Host::Hostname("198.51.100.1".into())` in a URI | kept as a hostname | held as `Host::Ipv4`, equal to the parsed host |
 | `Uri::Other` text with a space, CRLF or non-ASCII | kept raw | escaped as `%20`, `%0D%0A`, one `%XX` per byte; nothing is decoded |
 
 Two consequences:

@@ -44,7 +44,7 @@ Each component keeps its conformant characters literal, decodes escapes of unres
 
 Builders and parts structs take URI text, not logical values: `with_user("%2B1")` holds `%2B1`. The `encoding` module converts between logical bytes and that text: `decode_user("%2B1")` gives the bytes `+1`, and `encode_user("a b")` gives `a%20b`, escaping only what the user part does not keep literal.
 
-Hostnames are lowercased as ASCII only, with no IDNA and no non-ASCII case folding, and a URI holds a hostname that reads as an IPv4 address as `Host::IPv4`. IPv6 renders as the standard library displays it, and an IPv6 zone ID is not representable.
+Hostnames are lowercased as ASCII only, with no IDNA and no non-ASCII case folding, and a URI holds a hostname that reads as an IPv4 address as `Host::Ipv4`. IPv6 renders as the standard library displays it, and an IPv6 zone ID is not representable.
 
 ## Equality
 

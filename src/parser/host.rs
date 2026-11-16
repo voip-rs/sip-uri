@@ -21,7 +21,7 @@ pub(crate) fn parse_from_uri(s: &str, warnings: &mut Warnings) -> (Option<Host>,
             );
         };
         return match inner[..end].parse::<Ipv6Addr>() {
-            Ok(addr) => (Some(Host::IPv6(addr)), end + 2),
+            Ok(addr) => (Some(Host::Ipv6(addr)), end + 2),
             Err(_) => {
                 warnings.push(Component::Host, WarningCode::InvalidIpv6, s, 0);
                 (None, end + 2)
@@ -128,7 +128,7 @@ pub(crate) fn parse(s: &str) -> Result<Parsed<Host>, ParseError> {
     // host at the first `:`, which is inside the address here.
     if !s.starts_with('[') {
         if let Ok(addr) = s.parse::<Ipv6Addr>() {
-            return Ok(warnings.finish(Host::IPv6(addr)));
+            return Ok(warnings.finish(Host::Ipv6(addr)));
         }
     }
 
@@ -156,14 +156,14 @@ mod tests {
     #[test]
     fn parse_ipv4() {
         let (host, consumed) = from_uri("198.51.100.55:5060").unwrap();
-        assert_eq!(host, Host::IPv4(Ipv4Addr::new(198, 51, 100, 55)));
+        assert_eq!(host, Host::Ipv4(Ipv4Addr::new(198, 51, 100, 55)));
         assert_eq!(consumed, 13);
     }
 
     #[test]
     fn parse_ipv6() {
         let (host, consumed) = from_uri("[::1]:56001").unwrap();
-        assert_eq!(host, Host::IPv6(Ipv6Addr::LOCALHOST));
+        assert_eq!(host, Host::Ipv6(Ipv6Addr::LOCALHOST));
         assert_eq!(consumed, 5);
     }
 
@@ -172,7 +172,7 @@ mod tests {
         let (host, consumed) = from_uri("[2001:db8::1]:5061").unwrap();
         assert_eq!(
             host,
-            Host::IPv6(
+            Host::Ipv6(
                 "2001:db8::1"
                     .parse::<Ipv6Addr>()
                     .unwrap()
@@ -202,9 +202,9 @@ mod tests {
         );
         assert_eq!(
             Host::parse("192.0.2.1").unwrap(),
-            Host::IPv4(Ipv4Addr::new(192, 0, 2, 1))
+            Host::Ipv4(Ipv4Addr::new(192, 0, 2, 1))
         );
-        let v6 = Host::IPv6(
+        let v6 = Host::Ipv6(
             "2001:db8::1"
                 .parse::<Ipv6Addr>()
                 .unwrap(),

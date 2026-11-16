@@ -704,7 +704,7 @@ fn standalone_host_survives_unless_empty_or_dotted_quad() {
             {
                 assert!(reparsed.is_err(), "{s:?}")
             }
-            Host::IPv4(addr) => assert_eq!(reparsed.unwrap(), Host::IPv4(addr), "{s:?}"),
+            Host::Ipv4(addr) => assert_eq!(reparsed.unwrap(), Host::Ipv4(addr), "{s:?}"),
             _ => assert_eq!(reparsed.unwrap(), host, "{s:?}"),
         }
     }

@@ -9,7 +9,7 @@ use crate::canon;
 ///
 /// IPv6 addresses are stored without brackets; [`fmt::Display`] adds them,
 /// and [`Host::bare`] renders without. A URI holds a hostname that reads as
-/// an IPv4 address as [`Host::IPv4`], as [`Host::from_hostname`] does.
+/// an IPv4 address as [`Host::Ipv4`], as [`Host::from_hostname`] does.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(
     feature = "serde",
@@ -19,14 +19,14 @@ use crate::canon;
 #[non_exhaustive]
 pub enum Host {
     /// IPv4 address.
-    IPv4(Ipv4Addr),
+    Ipv4(Ipv4Addr),
     /// IPv6 address (stored without brackets).
-    IPv6(Ipv6Addr),
+    Ipv6(Ipv6Addr),
     /// DNS hostname.
     ///
     /// Built directly from an empty or dotted-quad name, this host prints as
-    /// text the parser reads as no host or as [`Host::IPv4`]. URI
-    /// constructors and serde hold a dotted quad as [`Host::IPv4`]; see
+    /// text the parser reads as no host or as [`Host::Ipv4`]. URI
+    /// constructors and serde hold a dotted quad as [`Host::Ipv4`]; see
     /// [`Host::from_hostname`].
     Hostname(Hostname),
 }
@@ -37,7 +37,7 @@ pub enum Host {
 /// Construction lowercases, decodes escaped unreserved characters and escapes
 /// every other byte outside them; it does not otherwise validate. An empty or
 /// dotted-quad name is a value too, but not one the parser returns: it reads
-/// that text as no host or as [`Host::IPv4`], as URI constructors and serde
+/// that text as no host or as [`Host::Ipv4`], as URI constructors and serde
 /// hold a dotted quad.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Hostname(String);
@@ -68,7 +68,7 @@ impl fmt::Display for Hostname {
 }
 
 impl Host {
-    /// [`Host::IPv4`] when the canonical name is a dotted-quad address as
+    /// [`Host::Ipv4`] when the canonical name is a dotted-quad address as
     /// [`Ipv4Addr`]'s `FromStr` reads it, leading zeros refused; otherwise
     /// [`Host::Hostname`].
     ///
@@ -81,7 +81,7 @@ impl Host {
     ///
     /// assert_eq!(
     ///     Host::from_hostname("198.51.100.1"),
-    ///     Host::IPv4(Ipv4Addr::new(198, 51, 100, 1))
+    ///     Host::Ipv4(Ipv4Addr::new(198, 51, 100, 1))
     /// );
     /// assert!(matches!(Host::from_hostname("198.051.100.1"), Host::Hostname(_)));
     /// ```
@@ -90,7 +90,7 @@ impl Host {
         let addr = name
             .as_str()
             .parse::<Ipv4Addr>();
-        addr.map_or(Host::Hostname(name), Host::IPv4)
+        addr.map_or(Host::Hostname(name), Host::Ipv4)
     }
 
     /// The host as URI constructors hold it: see [`Host::from_hostname`].
@@ -107,7 +107,7 @@ impl Host {
     /// ```
     /// use sip_uri_types::Host;
     ///
-    /// let host = Host::IPv6("2001:db8::1".parse().unwrap());
+    /// let host = Host::Ipv6("2001:db8::1".parse().unwrap());
     /// assert_eq!(host.to_string(), "[2001:db8::1]");
     /// assert_eq!(host.bare().to_string(), "2001:db8::1");
     /// ```
@@ -118,8 +118,8 @@ impl Host {
     /// The address of an IPv4 or IPv6 host, `None` for a hostname.
     pub fn ip(&self) -> Option<IpAddr> {
         match self {
-            Host::IPv4(addr) => Some(IpAddr::V4(*addr)),
-            Host::IPv6(addr) => Some(IpAddr::V6(*addr)),
+            Host::Ipv4(addr) => Some(IpAddr::V4(*addr)),
+            Host::Ipv6(addr) => Some(IpAddr::V6(*addr)),
             Host::Hostname(_) => None,
         }
     }
@@ -127,21 +127,21 @@ impl Host {
 
 impl From<Ipv4Addr> for Host {
     fn from(addr: Ipv4Addr) -> Self {
-        Host::IPv4(addr)
+        Host::Ipv4(addr)
     }
 }
 
 impl From<Ipv6Addr> for Host {
     fn from(addr: Ipv6Addr) -> Self {
-        Host::IPv6(addr)
+        Host::Ipv6(addr)
     }
 }
 
 impl From<IpAddr> for Host {
     fn from(addr: IpAddr) -> Self {
         match addr {
-            IpAddr::V4(v4) => Host::IPv4(v4),
-            IpAddr::V6(v6) => Host::IPv6(v6),
+            IpAddr::V4(v4) => Host::Ipv4(v4),
+            IpAddr::V6(v6) => Host::Ipv6(v6),
         }
     }
 }
@@ -161,8 +161,8 @@ pub struct Bare<'a>(&'a Host);
 impl fmt::Display for Bare<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
-            Host::IPv4(addr) => write!(f, "{addr}"),
-            Host::IPv6(addr) => write!(f, "{addr}"),
+            Host::Ipv4(addr) => write!(f, "{addr}"),
+            Host::Ipv6(addr) => write!(f, "{addr}"),
             Host::Hostname(name) => write!(f, "{name}"),
         }
     }
@@ -171,8 +171,8 @@ impl fmt::Display for Bare<'_> {
 impl fmt::Display for Host {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Host::IPv4(addr) => write!(f, "{addr}"),
-            Host::IPv6(addr) => write!(f, "[{addr}]"),
+            Host::Ipv4(addr) => write!(f, "{addr}"),
+            Host::Ipv6(addr) => write!(f, "[{addr}]"),
             Host::Hostname(name) => write!(f, "{name}"),
         }
     }
@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn display_ipv6_has_brackets() {
-        let host = Host::IPv6(Ipv6Addr::LOCALHOST);
+        let host = Host::Ipv6(Ipv6Addr::LOCALHOST);
         assert_eq!(host.to_string(), "[::1]");
     }
 
@@ -195,8 +195,8 @@ mod tests {
         for addr in [IpAddr::V4(v4), IpAddr::V6(v6)] {
             assert_eq!(Host::from(addr).ip(), Some(addr));
         }
-        assert_eq!(Host::from(v4), Host::IPv4(v4));
-        assert_eq!(Host::from(v6), Host::IPv6(v6));
+        assert_eq!(Host::from(v4), Host::Ipv4(v4));
+        assert_eq!(Host::from(v6), Host::Ipv6(v6));
         assert_eq!(Host::Hostname("example.com".into()).ip(), None);
         let name = Hostname::from("EXAMPLE.com");
         assert_eq!(AsRef::<str>::as_ref(&name), name.as_str());

@@ -257,7 +257,7 @@ impl SipUri {
     }
 
     /// Set the host, held as [`From`] a parts struct holds it: a dotted-quad
-    /// hostname as [`Host::IPv4`], an empty one as no host.
+    /// hostname as [`Host::Ipv4`], an empty one as no host.
     pub fn with_host(mut self, host: Host) -> Self {
         self.host = hold_host(host);
         self
@@ -391,7 +391,7 @@ impl SipUri {
     /// ```
     /// use sip_uri_types::{Host, SipUri};
     ///
-    /// let uri = SipUri::new(Host::IPv6("2001:db8::1".parse().unwrap()))
+    /// let uri = SipUri::new(Host::Ipv6("2001:db8::1".parse().unwrap()))
     ///     .with_user("alice")
     ///     .with_user_param("cpc", Some("ordinary"))
     ///     .with_password("pw")
@@ -552,7 +552,7 @@ mod tests {
         let built = SipUri::new(Host::Hostname("198.51.100.1".into()));
         assert_eq!(
             built.host(),
-            Some(&Host::IPv4(std::net::Ipv4Addr::new(198, 51, 100, 1)))
+            Some(&Host::Ipv4(std::net::Ipv4Addr::new(198, 51, 100, 1)))
         );
         let leading_zero = SipUri::new(Host::Hostname("198.051.100.1".into()));
         assert!(matches!(leading_zero.host(), Some(Host::Hostname(_))));

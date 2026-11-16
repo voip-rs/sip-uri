@@ -110,9 +110,9 @@ impl<'de> Visitor<'de> for PairVisitor {
 #[serde(rename_all = "lowercase")]
 enum HostRepr {
     #[serde(deserialize_with = "field::ipv4")]
-    IPv4(Ipv4Addr),
+    Ipv4(Ipv4Addr),
     #[serde(deserialize_with = "field::ipv6")]
-    IPv6(Ipv6Addr),
+    Ipv6(Ipv6Addr),
     Hostname(Hostname),
 }
 
@@ -125,8 +125,8 @@ impl<'de> Deserialize<'de> for Host {
             |d| HostRepr::deserialize(d),
         )?;
         Ok(match repr {
-            HostRepr::IPv4(addr) => Host::IPv4(addr),
-            HostRepr::IPv6(addr) => Host::IPv6(addr),
+            HostRepr::Ipv4(addr) => Host::Ipv4(addr),
+            HostRepr::Ipv6(addr) => Host::Ipv6(addr),
             HostRepr::Hostname(name) => Host::from_hostname(name),
         })
     }
@@ -639,7 +639,7 @@ mod tests {
         let host: Host = serde_json::from_value(json!({"hostname": "198.51.100.1"})).unwrap();
         assert_eq!(
             host,
-            Host::IPv4(
+            Host::Ipv4(
                 "198.51.100.1"
                     .parse()
                     .unwrap()
@@ -648,7 +648,7 @@ mod tests {
     }
 
     fn full_sip() -> SipUri {
-        SipUri::new(Host::IPv6(
+        SipUri::new(Host::Ipv6(
             "2001:db8::1"
                 .parse()
                 .unwrap(),
@@ -664,7 +664,7 @@ mod tests {
     }
 
     fn ipv4_sip() -> SipUri {
-        SipUri::new(Host::IPv4(
+        SipUri::new(Host::Ipv4(
             "198.51.100.1"
                 .parse()
                 .unwrap(),
@@ -704,7 +704,7 @@ mod tests {
             serde_json::to_value(&other).unwrap(),
             json!({"other": {"scheme": "https", "rest": "//example.com"}})
         );
-        let host = Host::IPv4(
+        let host = Host::Ipv4(
             "198.51.100.1"
                 .parse()
                 .unwrap(),
@@ -817,12 +817,12 @@ mod tests {
         errors_quote_no_marker(&other);
         errors_quote_no_marker(&Uri::from(other));
         for host in [
-            Host::IPv4(
+            Host::Ipv4(
                 "198.51.100.1"
                     .parse()
                     .unwrap(),
             ),
-            Host::IPv6(
+            Host::Ipv6(
                 "2001:db8::1"
                     .parse()
                     .unwrap(),
