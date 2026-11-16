@@ -1,4 +1,6 @@
-use sip_uri::{HeaderMask, Redaction, SipUri, TelUri, Uri, UriParse, UriRedact, UserMask};
+use sip_uri::{
+    HeaderMask, OpaqueMask, Redaction, SipUri, TelUri, Uri, UriParse, UriRedact, UserMask,
+};
 
 fn sip(s: &str) -> SipUri {
     SipUri::parse(s).unwrap()
@@ -144,17 +146,68 @@ fn tel_number_is_masked_by_default() {
 }
 
 #[test]
-fn uri_dispatches_and_leaves_others_unmasked() {
+fn uri_dispatches_to_each_kind() {
     let sip = Uri::parse("sip:alice@example.com").unwrap();
     assert_eq!(
         sip.redacted(&Redaction::default())
             .to_string(),
         "sip:***@example.com"
     );
-    let urn = Uri::parse("urn:service:sos").unwrap();
+    let urn = Uri::parse("urn:gsma:imei:TEST-0000-0000-0").unwrap();
+    let masked = "urn:gsma:***";
     assert_eq!(
         urn.redacted(&Redaction::default())
             .to_string(),
-        "urn:service:sos"
+        masked
     );
+    let urn = urn
+        .as_urn()
+        .unwrap();
+    assert_eq!(
+        urn.redacted(&Redaction::default())
+            .to_string(),
+        masked
+    );
+    let visible = Redaction::default().urn(OpaqueMask::Visible);
+    assert_eq!(visible.urn_mask(), OpaqueMask::Visible);
+    assert_eq!(
+        urn.redacted(&visible)
+            .to_string(),
+        urn.to_string()
+    );
+}
+
+#[test]
+fn caller_uris_parsed_as_other_are_masked_by_default() {
+    let inputs = [
+        ("<sip:+15551234567@example.com>", "***"),
+        ("+15551234567@example.com", "***"),
+        ("\"Alice\" <sip:+15551234567@example.com>", "***"),
+        ("http://alice:secret@example.com/", "http:***"),
+    ];
+    let visible = Redaction::default().other(OpaqueMask::Visible);
+    assert_eq!(visible.other_mask(), OpaqueMask::Visible);
+    for (input, masked) in inputs {
+        let uri = Uri::parse(input).unwrap();
+        let other = uri
+            .as_other()
+            .unwrap();
+        assert_eq!(
+            uri.redacted(&Redaction::default())
+                .to_string(),
+            masked,
+            "{input}"
+        );
+        assert_eq!(
+            other
+                .redacted(&Redaction::default())
+                .to_string(),
+            masked
+        );
+        assert_eq!(
+            uri.redacted(&visible)
+                .to_string(),
+            uri.to_string()
+        );
+    }
 }

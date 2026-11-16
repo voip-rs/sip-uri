@@ -209,7 +209,7 @@ The collections are opaque types instead of slices of tuples, so their storage c
 
 ## Logging
 
-`Display` writes the user part and password. For logs, use the redacted rendering. By default it masks the whole userinfo (or a tel: number) and every URI header value, since headers such as `P-Asserted-Identity` carry identities; `HeaderMask::Visible` shows headers, `drop_headers()` leaves them out:
+`Display` writes the user part and password. For logs, use the redacted rendering. By default it masks the whole userinfo (or a tel: number) and every URI header value, since headers such as `P-Asserted-Identity` carry identities; `HeaderMask::Visible` shows headers, `drop_headers()` leaves them out. A URN renders as `urn:<nid>:***` and a URI of another scheme as `<scheme>:***` (`***` without one), since malformed caller URIs land there; `urn()` and `other()` with `OpaqueMask::Visible` show them:
 
 ```rust
 use sip_uri::{HeaderMask, Redaction, SipUri, UriParse, UriRedact, UserMask};

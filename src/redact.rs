@@ -1,10 +1,20 @@
+//! Rendering a URI for logs.
+//!
+//! What a log may carry is deployment policy, so every URI kind starts
+//! masked and the caller relaxes each part on its own. A URN's NSS and the
+//! text of an unrecognized URI are masked whole, since a device identifier
+//! or a malformed caller URI lands there and no grammar here finds the
+//! identity inside.
+
 use std::fmt;
 use std::sync::Arc;
 
+use sip_uri_types::OtherUri;
 use sip_uri_types::Pairs;
 use sip_uri_types::SipUri;
 use sip_uri_types::TelUri;
 use sip_uri_types::Uri;
+use sip_uri_types::UrnUri;
 
 use crate::grammar::ESCAPE_LEN;
 
@@ -36,15 +46,27 @@ pub enum HeaderMask {
     Dropped,
 }
 
+/// How a URN, or a URI of an unrecognized scheme, is rendered by
+/// [`Redaction`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum OpaqueMask {
+    /// A URN keeps its NID and becomes `urn:<nid>:***`; another URI keeps
+    /// its scheme and becomes `<scheme>:***`, or `***` without one.
+    Masked,
+    /// Shown as Display writes it.
+    Visible,
+}
+
 /// What a redacted rendering masks.
 ///
 /// [`Redaction::default`] masks the whole userinfo, or a tel: number, and
 /// every URI header value, since headers such as `P-Asserted-Identity`
-/// carry identities: `sip:***@example.com?Subject=***`. Params are shown
-/// unless named in [`Redaction::params`]. A password is `***` under every
-/// [`UserMask`]. URN and unrecognized URIs render unmasked, so an
-/// identifier such as an IMEI in a URN NSS is the caller's to keep out of
-/// logs.
+/// carry identities: `sip:***@example.com?Subject=***`. It also masks a
+/// URN's NSS and everything after the scheme of an unrecognized URI, where
+/// device identifiers and malformed caller URIs land; see [`OpaqueMask`].
+/// Params are shown unless named in [`Redaction::params`]. A password is
+/// `***` under every [`UserMask`].
 ///
 /// A policy owns its data and clones cheaply, so one read from configuration
 /// is built once and lent to every rendering:
@@ -82,6 +104,8 @@ pub struct Redaction {
     user: UserMask,
     headers: HeaderMask,
     params: Arc<[String]>,
+    urn: OpaqueMask,
+    other: OpaqueMask,
 }
 
 impl Default for Redaction {
@@ -90,11 +114,35 @@ impl Default for Redaction {
             user: UserMask::Full,
             headers: HeaderMask::Values,
             params: Arc::from([]),
+            urn: OpaqueMask::Masked,
+            other: OpaqueMask::Masked,
         }
     }
 }
 
 impl Redaction {
+    /// Set how a URN is rendered.
+    pub fn urn(mut self, mask: OpaqueMask) -> Self {
+        self.urn = mask;
+        self
+    }
+
+    /// How a URN is rendered.
+    pub fn urn_mask(&self) -> OpaqueMask {
+        self.urn
+    }
+
+    /// Set how a URI of an unrecognized scheme, or of none, is rendered.
+    pub fn other(mut self, mask: OpaqueMask) -> Self {
+        self.other = mask;
+        self
+    }
+
+    /// How a URI of an unrecognized scheme, or of none, is rendered.
+    pub fn other_mask(&self) -> OpaqueMask {
+        self.other
+    }
+
     /// Set how the user part or tel: number is rendered.
     pub fn user(mut self, mask: UserMask) -> Self {
         self.user = mask;
@@ -155,7 +203,7 @@ mod sealed {
     pub trait Sealed {}
 }
 
-/// Rendering for logs, for [`SipUri`], [`TelUri`] and [`Uri`].
+/// Rendering for logs, for [`Uri`] and each of its variants' types.
 pub trait UriRedact: Sized + sealed::Sealed {
     /// Render for logs, masking what `how` names.
     ///
@@ -184,7 +232,7 @@ macro_rules! impl_uri_redact {
     )*};
 }
 
-impl_uri_redact!(SipUri, TelUri, Uri);
+impl_uri_redact!(SipUri, TelUri, UrnUri, OtherUri, Uri);
 
 fn write_masked_user(f: &mut fmt::Formatter<'_>, user: &str, mask: UserMask) -> fmt::Result {
     match mask {
@@ -335,8 +383,38 @@ impl fmt::Display for Redacted<'_, Uri> {
         match self.uri {
             Uri::Sip(u) => write!(f, "{}", u.redacted(self.how)),
             Uri::Tel(u) => write!(f, "{}", u.redacted(self.how)),
-            Uri::Urn(u) => write!(f, "{u}"),
-            Uri::Other(o) => write!(f, "{o}"),
+            Uri::Urn(u) => write!(f, "{}", u.redacted(self.how)),
+            Uri::Other(o) => write!(f, "{}", o.redacted(self.how)),
+        }
+    }
+}
+
+impl fmt::Display for Redacted<'_, UrnUri> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (
+            self.how
+                .urn,
+            self.uri
+                .nid(),
+        ) {
+            (OpaqueMask::Visible, _) => write!(f, "{}", self.uri),
+            (_, Some(nid)) => write!(f, "urn:{nid}:{MASK}"),
+            (_, None) => write!(f, "urn:{MASK}"),
+        }
+    }
+}
+
+impl fmt::Display for Redacted<'_, OtherUri> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (
+            self.how
+                .other,
+            self.uri
+                .scheme(),
+        ) {
+            (OpaqueMask::Visible, _) => write!(f, "{}", self.uri),
+            (_, Some(scheme)) => write!(f, "{scheme}:{MASK}"),
+            (_, None) => f.write_str(MASK),
         }
     }
 }

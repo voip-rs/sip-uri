@@ -54,7 +54,7 @@ mod warning;
 pub use equivalence::UriEquivalence;
 pub use error::ParseError;
 pub use parser::UriParse;
-pub use redact::{HeaderMask, Redacted, Redaction, UriRedact, UserMask};
+pub use redact::{HeaderMask, OpaqueMask, Redacted, Redaction, UriRedact, UserMask};
 pub use sip_uri_types;
 pub use sip_uri_types::encoding;
 pub use sip_uri_types::{
