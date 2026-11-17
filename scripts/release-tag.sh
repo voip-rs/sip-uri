@@ -98,19 +98,35 @@ replace_line() {
 	sed -i -E "0,/$pattern/s//$replacement/" "$file"
 }
 
+# sip-uri's requirement on a sibling: an rc in full, since a caret only
+# matches prereleases when it names one, else stopping at the minor.
+requirement() {
+	local version="$1" major minor
+	case "$version" in
+	*-*) echo "$version"; return ;;
+	esac
+	IFS=. read -r major minor _ <<<"$version"
+	if test "$major" != 0 && test "$minor" = 0; then
+		echo "$major"
+	else
+		echo "$major.$minor"
+	fi
+}
+
 for i in "${!CRATES[@]}"; do
 	VERSION="${VERSIONS[$i]}"
+	REQUIREMENT="$(requirement "$VERSION")"
 	case "${CRATES[$i]}" in
 	sip-uri)
 		replace_line Cargo.toml '^version = "[^"]*"' "version = \"$VERSION\""
 		;;
 	sip-uri-types)
 		replace_line sip-uri-types/Cargo.toml '^version = "[^"]*"' "version = \"$VERSION\""
-		replace_line Cargo.toml '^sip-uri-types = \{ version = "[^"]*"' "sip-uri-types = { version = \"$VERSION\""
+		replace_line Cargo.toml '^sip-uri-types = \{ version = "[^"]*"' "sip-uri-types = { version = \"$REQUIREMENT\""
 		;;
 	sip-uri-diagnostics)
 		replace_line sip-uri-diagnostics/Cargo.toml '^version = "[^"]*"' "version = \"$VERSION\""
-		replace_line Cargo.toml '^sip-uri-diagnostics = \{ version = "[^"]*"' "sip-uri-diagnostics = { version = \"$VERSION\""
+		replace_line Cargo.toml '^sip-uri-diagnostics = \{ version = "[^"]*"' "sip-uri-diagnostics = { version = \"$REQUIREMENT\""
 		;;
 	esac
 done

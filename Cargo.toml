@@ -36,8 +36,9 @@ serde = ["dep:serde", "sip-uri-types/serde"]
 
 [dependencies]
 serde = { version = "1", optional = true }
-sip-uri-diagnostics = { version = "1.0.0", path = "sip-uri-diagnostics" }
-sip-uri-types = { version = "1.0.0", path = "sip-uri-types" }
+# At least the minor that added the newest code or item sip-uri uses.
+sip-uri-diagnostics = { version = "1", path = "sip-uri-diagnostics" }
+sip-uri-types = { version = "1", path = "sip-uri-types" }
 
 [dev-dependencies]
 clap = { version = "4", default-features = false, features = ["std", "help", "usage", "error-context", "derive"] }

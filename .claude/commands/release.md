@@ -10,7 +10,7 @@ Optional override: $ARGUMENTS (format: `<crate> X.Y.Z[-rc.N]` pairs). If provide
 | sip-uri-types | `sip-uri-types/` | `sip-uri-types-vX.Y.Z[-rc.N]` |
 | sip-uri | repo root | `vX.Y.Z[-rc.N]` |
 
-sip-uri depends on sip-uri-types and sip-uri-diagnostics through `path` + `version` requirements. Releasing either bumps sip-uri's requirement on it too, so sip-uri needs a release whenever its Cargo.toml changed. sip-uri-types and sip-uri-diagnostics do not depend on each other.
+sip-uri depends on sip-uri-types and sip-uri-diagnostics through `path` + `version` requirements. Releasing either bumps sip-uri's requirement on it too, to the released minor (`"1"`, `"1.1"`) or a release candidate in full, so sip-uri needs a release whenever its Cargo.toml changed. A sip-uri change that uses a code or item added in a sibling's minor raises that requirement in the same commit, before any release. sip-uri-types and sip-uri-diagnostics do not depend on each other.
 
 ## Version determination
 
