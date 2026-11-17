@@ -86,7 +86,7 @@ pub enum HeaderMask {
 #[non_exhaustive]
 pub enum OpaqueMask {
     /// What may identify a person is masked, the rest shown. A URN in a
-    /// [public kind](Redaction::public_urns) is shown whole; another
+    /// [public kind](Redaction::with_public_urns) is shown whole; another
     /// becomes `urn:<nid>:***`, or `urn:<nid>` without an NSS. A
     /// hierarchical URI (`scheme://`) masks its userinfo and query,
     /// `https://***@example.com/a?***#f`; any other becomes `<scheme>:***`,
@@ -102,7 +102,7 @@ pub enum OpaqueMask {
 }
 
 /// How the host of a SIP URI is rendered by [`Redaction`]. A host carried
-/// in a param, such as `maddr`, is masked through [`Redaction::params`].
+/// in a param, such as `maddr`, is masked through [`Redaction::with_masked_params`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum HostMask {
@@ -117,9 +117,9 @@ pub enum HostMask {
 /// [`Redaction::default`] masks the whole userinfo, or a tel: number, and
 /// every URI header value, since headers such as `P-Asserted-Identity`
 /// carry identities: `sip:***@example.com?Subject=***`. A URN outside the
-/// [public kinds](Redaction::public_urns) and the userinfo and query of
+/// [public kinds](Redaction::with_public_urns) and the userinfo and query of
 /// an unrecognized URI are masked too; see [`OpaqueMask::Masked`]. Params
-/// are shown unless named in [`Redaction::params`], except that an `ext` or
+/// are shown unless named in [`Redaction::with_masked_params`], except that an `ext` or
 /// `isub` on a tel: URI or among SIP user-params, part of the subscriber's
 /// number, is masked by the [`UserMask`] as the number is. Hosts and
 /// routing params such as `rn` or `cic` are public and stay shown; a number
@@ -141,8 +141,8 @@ pub enum HostMask {
 /// impl Logger {
 ///     fn new(masked_params: &[String]) -> Self {
 ///         let redaction = Redaction::default()
-///             .user(UserMask::KeepLast(4))
-///             .params(masked_params);
+///             .with_user(UserMask::KeepLast(4))
+///             .with_masked_params(masked_params);
 ///         Logger { redaction }
 ///     }
 ///
@@ -222,7 +222,7 @@ impl Redaction {
     /// and `emergency:uid` call, incident and log identifiers. A kind is
     /// listed only when no URN of it identifies a person. A URN of a public
     /// kind is shown whole, its r-, q- and f-components included.
-    pub fn public_urns<I, S>(mut self, kinds: I) -> Self
+    pub fn with_public_urns<I, S>(mut self, kinds: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: Into<String>,
@@ -234,7 +234,7 @@ impl Redaction {
         self
     }
 
-    /// Whether `urn` is of a kind [`public_urns`](Redaction::public_urns)
+    /// Whether `urn` is of a kind [`with_public_urns`](Redaction::with_public_urns)
     /// lists.
     pub fn is_public_urn(&self, urn: &UrnUri) -> bool {
         self.public_urns
@@ -243,7 +243,7 @@ impl Redaction {
     }
 
     /// Set how the host of a SIP URI is rendered.
-    pub fn host(mut self, mask: HostMask) -> Self {
+    pub fn with_host(mut self, mask: HostMask) -> Self {
         self.host = mask;
         self
     }
@@ -254,7 +254,7 @@ impl Redaction {
     }
 
     /// Set how a URN is rendered.
-    pub fn urn(mut self, mask: OpaqueMask) -> Self {
+    pub fn with_urn(mut self, mask: OpaqueMask) -> Self {
         self.urn = mask;
         self
     }
@@ -265,7 +265,7 @@ impl Redaction {
     }
 
     /// Set how a URI of an unrecognized scheme, or of none, is rendered.
-    pub fn other(mut self, mask: OpaqueMask) -> Self {
+    pub fn with_other(mut self, mask: OpaqueMask) -> Self {
         self.other = mask;
         self
     }
@@ -276,7 +276,7 @@ impl Redaction {
     }
 
     /// Set how the user part or tel: number is rendered.
-    pub fn user(mut self, mask: UserMask) -> Self {
+    pub fn with_user(mut self, mask: UserMask) -> Self {
         self.user = mask;
         self
     }
@@ -287,7 +287,7 @@ impl Redaction {
     }
 
     /// Set how URI headers are rendered.
-    pub fn headers(mut self, mask: HeaderMask) -> Self {
+    pub fn with_headers(mut self, mask: HeaderMask) -> Self {
         self.headers = mask;
         self
     }
@@ -297,14 +297,9 @@ impl Redaction {
         self.headers
     }
 
-    /// Leave URI headers out of the rendering: [`HeaderMask::Dropped`].
-    pub fn drop_headers(self) -> Self {
-        self.headers(HeaderMask::Dropped)
-    }
-
     /// Render the values of params with these names, canonized and compared
     /// case-insensitively, as `***`, in place of any set before.
-    pub fn params<I, S>(mut self, names: I) -> Self
+    pub fn with_masked_params<I, S>(mut self, names: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
@@ -317,7 +312,7 @@ impl Redaction {
         self
     }
 
-    /// Whether [`params`](Redaction::params) names `name`, both canonized
+    /// Whether [`with_masked_params`](Redaction::with_masked_params) names `name`, both canonized
     /// and compared ignoring ASCII case, as [`Params::get`] finds a name.
     pub fn masks_param(&self, name: &str) -> bool {
         self.params
@@ -367,7 +362,7 @@ pub trait UriRedact: Sized + sealed::Sealed {
     /// let uri = SipUri::parse("sip:+15551234567;cpc=ordinary:pw@example.com").unwrap();
     /// assert_eq!(uri.redacted(&Redaction::default()).to_string(), "sip:***@example.com");
     /// assert_eq!(
-    ///     uri.redacted(&Redaction::default().user(UserMask::KeepLast(4))).to_string(),
+    ///     uri.redacted(&Redaction::default().with_user(UserMask::KeepLast(4))).to_string(),
     ///     "sip:+xxxxxxx4567;cpc=ordinary:***@example.com"
     /// );
     /// ```

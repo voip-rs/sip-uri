@@ -261,11 +261,11 @@ input.
 
 - the whole userinfo, or a tel: number, becomes `***`;
 - every URI header value becomes `***` (`?Subject=***`), since headers such as `P-Asserted-Identity` carry identities; a header without a value stays its name alone;
-- params are shown, except those named in `params()` and an `ext` or `isub` on a tel: URI or among SIP user-params, which are part of the subscriber's number and take the user mask the number takes; routing params such as `rn` and `cic` stay visible;
-- a URN of a public kind is shown (service URNs such as `urn:service:sos`, `urn:nena:service:…` and `urn:emergency:service:…`, and `urn:emergency:uid:…` call, incident and log identifiers; `public_urns()` sets the list), and any other keeps its NID and masks the rest (`urn:gsma:***`);
+- params are shown, except those named in `with_masked_params()` and an `ext` or `isub` on a tel: URI or among SIP user-params, which are part of the subscriber's number and take the user mask the number takes; routing params such as `rn` and `cic` stay visible;
+- a URN of a public kind is shown (service URNs such as `urn:service:sos`, `urn:nena:service:…` and `urn:emergency:service:…`, and `urn:emergency:uid:…` call, incident and log identifiers; `with_public_urns()` sets the list), and any other keeps its NID and masks the rest (`urn:gsma:***`);
 - a hierarchical URI of any other scheme masks its userinfo and query (`https://***@example.com/adr?***`), and one without `//` keeps only its scheme (`mailto:***`, or `***` with no scheme), since no part of it can be located; `OpaqueMask::Visible` shows them, all but a password.
 
-The default masks only what identifies a person: hosts, routing params, namespaces and schemes are public and stay visible for debugging. It does not chase an identity a sender put where the grammar places none: a number written as a SIP host (`sip:5551234567`) or as a URN NID shows. `host(HostMask::Full)` masks the host, and `OpaqueMask::Full` masks a URN's NID or another URI's scheme as well.
+The default masks only what identifies a person: hosts, routing params, namespaces and schemes are public and stay visible for debugging. It does not chase an identity a sender put where the grammar places none: a number written as a SIP host (`sip:5551234567`) or as a URN NID shows. `with_host(HostMask::Full)` masks the host, and `OpaqueMask::Full` masks a URN's NID or another URI's scheme as well.
 
 A `Redaction` owns its policy and clones cheaply, so one built from configuration is stored once and lent to each `redacted(&how)` call. `Debug` writes a password as `***` but the user part as it is.
 
@@ -274,7 +274,7 @@ use sip_uri::{HeaderMask, Redaction, SipUri, UriParse, UriRedact, UserMask};
 
 let uri = SipUri::parse("sip:+15551234567:pw@example.com?Subject=x").unwrap();
 assert_eq!(uri.redacted(&Redaction::default()).to_string(), "sip:***@example.com?Subject=***");
-let keep4 = Redaction::default().user(UserMask::KeepLast(4)).headers(HeaderMask::Visible);
+let keep4 = Redaction::default().with_user(UserMask::KeepLast(4)).with_headers(HeaderMask::Visible);
 assert_eq!(uri.redacted(&keep4).to_string(), "sip:+xxxxxxx4567:***@example.com?Subject=x");
 ```
 

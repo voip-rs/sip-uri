@@ -30,22 +30,22 @@ fn header_values_are_masked_unless_shown() {
         "sip:example.com?P-Asserted-Identity=***&Flag&E=***"
     );
     assert_eq!(
-        render(Redaction::default().headers(HeaderMask::Visible)),
+        render(Redaction::default().with_headers(HeaderMask::Visible)),
         uri.to_string()
     );
     assert_eq!(
-        render(Redaction::default().drop_headers()),
-        render(Redaction::default().headers(HeaderMask::Dropped))
+        render(Redaction::default().with_headers(HeaderMask::Dropped)),
+        render(Redaction::default().with_headers(HeaderMask::Dropped))
     );
     assert_eq!(
-        render(Redaction::default().drop_headers()),
+        render(Redaction::default().with_headers(HeaderMask::Dropped)),
         "sip:example.com"
     );
 }
 
 #[test]
 fn masks_param_ignores_ascii_case() {
-    let how = Redaction::default().params(["ParticipantId"]);
+    let how = Redaction::default().with_masked_params(["ParticipantId"]);
     assert!(how.masks_param("participantid"));
     assert!(how.masks_param("PARTICIPANTID"));
     assert!(!how.masks_param("transport"));
@@ -55,21 +55,21 @@ fn masks_param_ignores_ascii_case() {
 #[test]
 fn masked_param_names_match_however_they_are_spelled() {
     let uri = sip("sip:example.com;a%20b=secret;token=secret2");
-    let how = Redaction::default().params(["a b", "tok%65n"]);
+    let how = Redaction::default().with_masked_params(["a b", "tok%65n"]);
     assert_eq!(
         uri.redacted(&how)
             .to_string(),
         "sip:example.com;a%20b=***;token=***"
     );
-    let how = Redaction::default().params(["a;b", "%73ession"]);
+    let how = Redaction::default().with_masked_params(["a;b", "%73ession"]);
     for spelling in ["a;b", "a%3Bb", "%73ession", "session", "SESSION"] {
         assert!(how.masks_param(spelling), "{spelling}");
     }
     assert!(!how.masks_param(""));
     let user = sip("sip:alice;a,b=secret@example.com");
     let how = Redaction::default()
-        .user(UserMask::Visible)
-        .params(["a,b"]);
+        .with_user(UserMask::Visible)
+        .with_masked_params(["a,b"]);
     assert_eq!(
         user.redacted(&how)
             .to_string(),
@@ -82,7 +82,7 @@ fn user_mask_reads_back() {
     assert_eq!(Redaction::default().user_mask(), UserMask::Full);
     assert_eq!(
         Redaction::default()
-            .user(UserMask::KeepLast(4))
+            .with_user(UserMask::KeepLast(4))
             .user_mask(),
         UserMask::KeepLast(4)
     );
@@ -102,7 +102,7 @@ fn default_leaves_uri_without_userinfo_unchanged() {
 fn visible_user_still_masks_password() {
     let uri = sip("sip:alice:secret@example.com");
     assert_eq!(
-        uri.redacted(&Redaction::default().user(UserMask::Visible))
+        uri.redacted(&Redaction::default().with_user(UserMask::Visible))
             .to_string(),
         "sip:alice:***@example.com"
     );
@@ -110,7 +110,7 @@ fn visible_user_still_masks_password() {
 
 #[test]
 fn keep_last_masks_only_digits() {
-    let how = Redaction::default().user(UserMask::KeepLast(4));
+    let how = Redaction::default().with_user(UserMask::KeepLast(4));
     assert_eq!(
         sip("sip:+1-555-123-4567@example.com")
             .redacted(&how)
@@ -127,7 +127,7 @@ fn keep_last_masks_only_digits() {
 
 #[test]
 fn keep_last_leaves_escapes_intact() {
-    let how = Redaction::default().user(UserMask::KeepLast(4));
+    let how = Redaction::default().with_user(UserMask::KeepLast(4));
     assert_eq!(
         sip("sip:%2B15551234567@example.com")
             .redacted(&how)
@@ -136,7 +136,7 @@ fn keep_last_leaves_escapes_intact() {
     );
     assert_eq!(
         sip("sip:%2B1234@example.com")
-            .redacted(&Redaction::default().user(UserMask::KeepLast(2)))
+            .redacted(&Redaction::default().with_user(UserMask::KeepLast(2)))
             .to_string(),
         "sip:%2Bxx34@example.com"
     );
@@ -146,9 +146,9 @@ fn keep_last_leaves_escapes_intact() {
 fn headers_and_named_params_can_be_masked() {
     let uri = sip("sip:alice@example.com;participantid=abc;user=phone?Replaces=x%40y");
     let how = Redaction::default()
-        .user(UserMask::Visible)
-        .drop_headers()
-        .params(["ParticipantId"]);
+        .with_user(UserMask::Visible)
+        .with_headers(HeaderMask::Dropped)
+        .with_masked_params(["ParticipantId"]);
     assert_eq!(
         uri.redacted(&how)
             .to_string(),
@@ -165,7 +165,7 @@ fn tel_number_is_masked_by_default() {
         "tel:***;cpc=emergency"
     );
     assert_eq!(
-        tel.redacted(&Redaction::default().user(UserMask::KeepLast(4)))
+        tel.redacted(&Redaction::default().with_user(UserMask::KeepLast(4)))
             .to_string(),
         "tel:+xxxxxxx4567;cpc=emergency"
     );
@@ -183,7 +183,7 @@ fn params_carrying_a_number_are_masked_as_the_number() {
         "tel:***;phone-context=+1555;ext=***;isub=***;rn=+15559876543;cic=+15550000"
     );
     assert_eq!(
-        tel.redacted(&Redaction::default().user(UserMask::KeepLast(2)))
+        tel.redacted(&Redaction::default().with_user(UserMask::KeepLast(2)))
             .to_string(),
         "tel:xxxxx34;phone-context=+1555;ext=xx34;isub=xx99;rn=+15559876543;cic=+15550000"
     );
@@ -196,7 +196,7 @@ fn params_carrying_a_number_are_masked_as_the_number() {
     );
     let sip = sip("sip:+15551234567;ext=1234@example.com;ext=1234");
     assert_eq!(
-        sip.redacted(&Redaction::default().user(UserMask::KeepLast(2)))
+        sip.redacted(&Redaction::default().with_user(UserMask::KeepLast(2)))
             .to_string(),
         "sip:+xxxxxxxxx67;ext=xx34@example.com;ext=1234"
     );
@@ -225,7 +225,7 @@ fn uri_dispatches_to_each_kind() {
             .to_string(),
         masked
     );
-    let visible = Redaction::default().urn(OpaqueMask::Visible);
+    let visible = Redaction::default().with_urn(OpaqueMask::Visible);
     assert_eq!(visible.urn_mask(), OpaqueMask::Visible);
     assert_eq!(
         urn.redacted(&visible)
@@ -271,7 +271,7 @@ fn public_urn_kinds_are_shown() {
         );
     }
 
-    let listed = Redaction::default().public_urns(["EXAMPLE", "nena:companyid"]);
+    let listed = Redaction::default().with_public_urns(["EXAMPLE", "nena:companyid"]);
     let example = UrnUri::parse("urn:example:TEST-1").unwrap();
     let company = UrnUri::parse("urn:nena:companyid:TEST3").unwrap();
     let sos = UrnUri::parse("urn:service:sos").unwrap();
@@ -304,7 +304,7 @@ fn caller_uris_parsed_as_other_are_masked_by_default() {
         ("mailto:alice@example.com", "mailto:***"),
         ("cid:part1@example.com", "cid:***"),
     ];
-    let visible = Redaction::default().other(OpaqueMask::Visible);
+    let visible = Redaction::default().with_other(OpaqueMask::Visible);
     assert_eq!(visible.other_mask(), OpaqueMask::Visible);
     for (input, masked) in inputs {
         let uri = Uri::parse(input).unwrap();
@@ -330,7 +330,7 @@ fn caller_uris_parsed_as_other_are_masked_by_default() {
 /// The Visible rendering in OtherUri's Debug wrapper, to compare the two
 /// renderings' password masks.
 fn visible_as_debug(other: &OtherUri) -> String {
-    let visible = Redaction::default().other(OpaqueMask::Visible);
+    let visible = Redaction::default().with_other(OpaqueMask::Visible);
     format!(
         "OtherUri({:?})",
         other
@@ -371,7 +371,7 @@ fn visible_other_masks_every_password_as_debug_does() {
         let other = uri
             .as_other()
             .unwrap();
-        let visible = Redaction::default().other(OpaqueMask::Visible);
+        let visible = Redaction::default().with_other(OpaqueMask::Visible);
         assert_eq!(
             uri.redacted(&visible)
                 .to_string(),
@@ -391,7 +391,7 @@ fn off_grammar_positions_are_shown_by_default_and_masked_on_request() {
             .to_string(),
         "sip:5551234567;transport=udp"
     );
-    let masked_host = Redaction::default().host(HostMask::Full);
+    let masked_host = Redaction::default().with_host(HostMask::Full);
     assert_eq!(masked_host.host_mask(), HostMask::Full);
     assert_eq!(
         sip("sip:alice@example.com:5060")
@@ -408,8 +408,8 @@ fn off_grammar_positions_are_shown_by_default_and_masked_on_request() {
         "urn:5551234567"
     );
     let full = Redaction::default()
-        .urn(OpaqueMask::Full)
-        .other(OpaqueMask::Full);
+        .with_urn(OpaqueMask::Full)
+        .with_other(OpaqueMask::Full);
     assert_eq!(
         nid_number
             .redacted(&full)
