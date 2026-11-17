@@ -7,6 +7,9 @@
 //! sip-uri's 0.x releases. The RFC equivalence rules that use them, and the
 //! choice of which header rule a comparison applies, live in sip-uri.
 
+use std::rc::Rc;
+use std::sync::Arc;
+
 use crate::Headers;
 
 /// The header-field matching rules sip-uri's `UriEquivalence::equivalent_with`
@@ -36,11 +39,27 @@ use crate::Headers;
 /// assert!(!sip_uri_types::ordered_headers_equivalent(&a, &b));
 /// assert!(CaseFolded.headers_equivalent(&a, &b));
 /// ```
+///
+/// The trait is object-safe and stays so, and references and smart
+/// pointers to an implementor implement it, so a `&dyn`, `Box<dyn>` or
+/// `Arc` held by the caller can be passed as it is.
 pub trait UriHeaderEquivalence {
     /// Whether the header sets `a` and `b` match. Names and values are the
     /// canonical, percent-encoded text the URI holds.
     fn headers_equivalent(&self, a: &Headers, b: &Headers) -> bool;
 }
+
+macro_rules! forward_header_equivalence {
+    ($($ptr:ty),*) => {$(
+        impl<T: UriHeaderEquivalence + ?Sized> UriHeaderEquivalence for $ptr {
+            fn headers_equivalent(&self, a: &Headers, b: &Headers) -> bool {
+                (**self).headers_equivalent(a, b)
+            }
+        }
+    )*};
+}
+
+forward_header_equivalence!(&T, &mut T, Box<T>, Rc<T>, Arc<T>);
 
 /// URI headers equivalent by RFC 3261 §7.3.1 row order with exact values:
 /// rows with different names in any order, rows sharing a name, compared

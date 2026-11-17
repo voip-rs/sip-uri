@@ -197,3 +197,20 @@ fn equivalent_with_takes_the_header_rules() {
     let tel = TelUri::parse("tel:+15551234567").unwrap();
     assert!(tel.equivalent_with(&tel, rules));
 }
+
+#[test]
+fn header_rules_held_behind_a_pointer_pass_as_they_are() {
+    fn rules_hold<H: UriHeaderEquivalence>(rules: H) -> bool {
+        let a = SipUri::parse("sip:example.com?s=Lunch").unwrap();
+        let b = SipUri::parse("sip:example.com?subject=lunch").unwrap();
+        a.equivalent_with(&b, &rules)
+    }
+    let boxed: Box<dyn UriHeaderEquivalence> = Box::new(SubjectRules);
+    assert!(rules_hold(&boxed));
+    assert!(rules_hold(boxed));
+    let shared: std::sync::Arc<dyn UriHeaderEquivalence + Send + Sync> =
+        std::sync::Arc::new(SubjectRules);
+    assert!(rules_hold(shared));
+    assert!(rules_hold(std::rc::Rc::new(SubjectRules)));
+    assert!(rules_hold(&mut SubjectRules));
+}
