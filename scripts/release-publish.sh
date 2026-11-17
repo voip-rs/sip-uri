@@ -58,13 +58,17 @@ for pair in "sip-uri-diagnostics:${DIAGNOSTICS_TAG#sip-uri-diagnostics-v}:$DIAGN
 	PACKAGES+=("$crate")
 done
 
+# Cargo reuses a registry crate's build by version alone, so verifying in the
+# shared target dir can build sip-uri against an older sip-uri-types 1.0.0.
+VERIFY_DIR=target/release-verify
+rm -rf "$VERIFY_DIR"
 PACKAGE_ARGS=()
 for crate in "${PACKAGES[@]}"; do
 	PACKAGE_ARGS+=(-p "$crate")
 done
-cargo publish --dry-run "${PACKAGE_ARGS[@]}"
+cargo publish --dry-run --target-dir "$VERIFY_DIR" "${PACKAGE_ARGS[@]}"
 for crate in "${PACKAGES[@]}"; do
-	cargo publish -p "$crate"
+	cargo publish --target-dir "$VERIFY_DIR" -p "$crate"
 done
 git switch "$BRANCH"
 
