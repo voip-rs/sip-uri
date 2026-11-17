@@ -2,8 +2,8 @@
 //! survived it.
 //!
 //! A code's kebab-case name, description and kind are written once, in
-//! the `warning_codes!` table and [`WarningCode::kind`]; a warning holds no
-//! kind of its own, so it cannot disagree with its code.
+//! its `warning_codes!` row, so no code exists without a kind; a warning
+//! holds no kind of its own, so it cannot disagree with its code.
 
 use std::fmt;
 
@@ -146,9 +146,9 @@ impl Component {
     }
 }
 
-/// One row per code: its docs, variant, kebab-case name and description.
+/// One row per code: its docs, variant, kebab-case name, description and kind.
 macro_rules! warning_codes {
-    ($($(#[$doc:meta])* $variant:ident => $name:literal, $description:literal;)*) => {
+    ($($(#[$doc:meta])* $variant:ident => $name:literal, $description:literal, $kind:ident;)*) => {
         /// What a [`ParseWarning`] found.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         #[non_exhaustive]
@@ -160,9 +160,9 @@ macro_rules! warning_codes {
             /// Every code, in declaration order.
             pub const ALL: &'static [WarningCode] = &[$(WarningCode::$variant),*];
 
-            fn names(self) -> (&'static str, &'static str) {
+            fn row(self) -> (&'static str, &'static str, WarningKind) {
                 match self {
-                    $(WarningCode::$variant => ($name, $description),)*
+                    $(WarningCode::$variant => ($name, $description, WarningKind::$kind),)*
                 }
             }
         }
@@ -173,106 +173,91 @@ warning_codes! {
     /// A character outside the component's character set, held as its
     /// escaped octet. In [`Component::Other`] only a byte that would break a
     /// header line is escaped; any other is held as sent.
-    InvalidChar => "invalid-char", "invalid character";
+    InvalidChar => "invalid-char", "invalid character", Recovered;
     /// A `%` not followed by two hex digits, held as the octet `%`, `%25`,
     /// except in [`Component::Other`], which holds it as sent.
-    MalformedEscape => "malformed-escape", "malformed percent-escape";
+    MalformedEscape => "malformed-escape", "malformed percent-escape", Recovered;
     /// A parameter with no name before `=`.
-    EmptyName => "empty-name", "empty parameter name";
+    EmptyName => "empty-name", "empty parameter name", Recovered;
     /// An empty `;` or `&` segment, dropped.
-    EmptySegment => "empty-segment", "empty segment dropped";
+    EmptySegment => "empty-segment", "empty segment dropped", Lost;
     /// A password with no user before it.
-    PasswordWithoutUser => "password-without-user", "password without user";
+    PasswordWithoutUser => "password-without-user", "password without user", Recovered;
     /// A port written with a `+` sign.
-    SignedPort => "signed-port", "signed port";
+    SignedPort => "signed-port", "signed port", Recovered;
     /// A `:` with no port after it, dropped.
-    EmptyPort => "empty-port", "empty port dropped";
+    EmptyPort => "empty-port", "empty port dropped", Lost;
     /// A host label that is empty or starts or ends with `-`.
-    InvalidHostLabel => "invalid-host-label", "invalid host label";
+    InvalidHostLabel => "invalid-host-label", "invalid host label", Recovered;
     /// A hostname whose last label does not start with a letter.
-    NumericToplabel => "numeric-toplabel", "last host label does not start with a letter";
+    NumericToplabel => "numeric-toplabel", "last host label does not start with a letter", Recovered;
     /// A hostname written with percent-escapes.
-    EscapedHost => "escaped-host", "percent-escaped hostname";
+    EscapedHost => "escaped-host", "percent-escaped hostname", Recovered;
     /// A fragment on a URI whose grammar defines none.
-    UnexpectedFragment => "unexpected-fragment", "fragment not defined for this scheme";
+    UnexpectedFragment => "unexpected-fragment", "fragment not defined for this scheme", Recovered;
     /// A `#` with nothing after it, dropped.
-    EmptyFragment => "empty-fragment", "empty fragment dropped";
+    EmptyFragment => "empty-fragment", "empty fragment dropped", Lost;
     /// A user part containing `?`, likely a header value whose `@` was taken
     /// as the userinfo delimiter.
-    HeaderShapedUser => "header-shaped-user", "user part contains '?'";
+    HeaderShapedUser => "header-shaped-user", "user part contains '?'", Recovered;
     /// A local tel: number without `phone-context`.
-    MissingPhoneContext => "missing-phone-context", "local number without phone-context";
+    MissingPhoneContext => "missing-phone-context", "local number without phone-context", Recovered;
     /// A URN `?+` or `?=` with nothing after it.
-    EmptyComponent => "empty-component", "empty component";
+    EmptyComponent => "empty-component", "empty component", Recovered;
     /// A scheme outside the RFC 3986 grammar.
-    InvalidScheme => "invalid-scheme", "invalid scheme";
+    InvalidScheme => "invalid-scheme", "invalid scheme", Recovered;
     /// No scheme before the rest of the URI.
-    MissingScheme => "missing-scheme", "missing scheme";
+    MissingScheme => "missing-scheme", "missing scheme", Lost;
     /// `*`, which is not a URI.
-    Wildcard => "wildcard", "wildcard is not a URI";
+    Wildcard => "wildcard", "wildcard is not a URI", Recovered;
     /// No host where the grammar requires one.
-    MissingHost => "missing-host", "missing host";
+    MissingHost => "missing-host", "missing host", Lost;
     /// A bracketed IPv6 reference that is unclosed or not an IPv6 address.
-    InvalidIpv6 => "invalid-ipv6", "invalid IPv6 reference dropped";
+    InvalidIpv6 => "invalid-ipv6", "invalid IPv6 reference dropped", Lost;
     /// A port that is not a number in 0-65535, dropped.
-    InvalidPort => "invalid-port", "invalid port dropped";
+    InvalidPort => "invalid-port", "invalid port dropped", Lost;
     /// Text after the host or port that starts no component, dropped.
-    TrailingContent => "trailing-content", "trailing content dropped";
+    TrailingContent => "trailing-content", "trailing content dropped", Lost;
     /// A URI header with no `=`, held without a value.
-    MissingValue => "missing-value", "header without '='";
+    MissingValue => "missing-value", "header without '='", Recovered;
     /// An empty user before user-params.
-    EmptyUser => "empty-user", "empty user";
+    EmptyUser => "empty-user", "empty user", Recovered;
     /// An `@` with no userinfo before it, dropped.
-    EmptyUserinfo => "empty-userinfo", "empty userinfo dropped";
+    EmptyUserinfo => "empty-userinfo", "empty userinfo dropped", Lost;
     /// A tel: URI with no number.
-    MissingNumber => "missing-number", "missing number";
+    MissingNumber => "missing-number", "missing number", Lost;
     /// A tel: number with no digit.
-    NoDigits => "no-digits", "number without digits";
+    NoDigits => "no-digits", "number without digits", Recovered;
     /// A URN with no namespace identifier.
-    MissingNid => "missing-nid", "missing namespace identifier";
+    MissingNid => "missing-nid", "missing namespace identifier", Lost;
     /// A URN with no namespace-specific string.
-    MissingNss => "missing-nss", "missing namespace-specific string";
+    MissingNss => "missing-nss", "missing namespace-specific string", Lost;
     /// A URN namespace identifier outside RFC 8141's length or character rules.
-    InvalidNid => "invalid-nid", "invalid namespace identifier";
+    InvalidNid => "invalid-nid", "invalid namespace identifier", Recovered;
     /// An IPv6 zone identifier after `%`, which a host cannot hold, dropped.
-    Ipv6Zone => "ipv6-zone", "IPv6 zone identifier dropped";
+    Ipv6Zone => "ipv6-zone", "IPv6 zone identifier dropped", Lost;
     /// A param, user-param or header that would take its list's text past
     /// `u32::MAX` bytes, dropped.
-    TooLong => "too-long", "list text over the size limit dropped";
+    TooLong => "too-long", "list text over the size limit dropped", Lost;
 }
 
 impl WarningCode {
     /// Stable kebab-case name, for logs and machine consumers.
     pub fn as_str(self) -> &'static str {
-        self.names()
+        self.row()
             .0
     }
 
     /// What the code found, in words for people.
     pub fn describe(self) -> &'static str {
-        self.names()
+        self.row()
             .1
     }
 
     /// Whether a value parsed past this breach still carries what was sent.
     pub fn kind(self) -> WarningKind {
-        match self {
-            WarningCode::EmptySegment
-            | WarningCode::EmptyPort
-            | WarningCode::EmptyFragment
-            | WarningCode::MissingScheme
-            | WarningCode::MissingHost
-            | WarningCode::InvalidIpv6
-            | WarningCode::Ipv6Zone
-            | WarningCode::InvalidPort
-            | WarningCode::TrailingContent
-            | WarningCode::EmptyUserinfo
-            | WarningCode::MissingNumber
-            | WarningCode::MissingNid
-            | WarningCode::MissingNss
-            | WarningCode::TooLong => WarningKind::Lost,
-            _ => WarningKind::Recovered,
-        }
+        self.row()
+            .2
     }
 }
 
