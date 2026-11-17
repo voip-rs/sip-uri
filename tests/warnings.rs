@@ -1,5 +1,6 @@
 use sip_uri::{
-    Component, Host, ParseWarning, SipUri, TelUri, Uri, UriParse, UrnUri, WarningCode, WarningKind,
+    Component, Host, ParseWarning, Parsed, SipUri, TelUri, Uri, UriParse, UrnUri, WarningCode,
+    WarningKind,
 };
 
 fn codes(warnings: &[ParseWarning]) -> Vec<(Component, WarningCode)> {
@@ -25,6 +26,17 @@ fn sip(input: &str) -> (SipUri, Vec<ParseWarning>) {
 fn only(warnings: &[ParseWarning], component: Component, code: WarningCode) -> ParseWarning {
     assert_eq!(codes(warnings), [(component, code)], "{warnings:?}");
     warnings[0].clone()
+}
+
+#[test]
+fn parsed_destructures_and_builds_outside_the_crate() {
+    let Parsed { value, warnings } = SipUri::parse_with_warnings("sip:example.com:+5060").unwrap();
+    assert_eq!(
+        codes(&warnings),
+        [(Component::Port, WarningCode::SignedPort)]
+    );
+    let rebuilt = Parsed::new(value.clone(), warnings.clone()).map(Uri::Sip);
+    assert_eq!(rebuilt, Parsed::new(Uri::Sip(value), warnings));
 }
 
 #[test]

@@ -27,7 +27,7 @@ Parser, builders, parts constructors and serde reach a component only through th
 
 ## `#[non_exhaustive]` on every public enum and public-field struct
 
-Single-field error newtypes are exempt, and so are `Uri` and `Scheme`, whose variant set the rationale fixes.
+Single-field error newtypes are exempt, and so are `Uri` and `Scheme`, whose variant set the rationale fixes, and a plain result pair callers destructure (`Parsed`).
 
 ## No `assert!` / `unwrap()` in library code
 

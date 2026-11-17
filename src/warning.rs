@@ -7,8 +7,10 @@ use crate::grammar::{validate_pct_encoded, CharClass};
 /// Returned by [`UriParse::parse_with_warnings`](crate::UriParse::parse_with_warnings).
 /// `value` is what [`UriParse::parse`](crate::UriParse::parse) returns for the
 /// same input.
+///
+/// A plain result pair: callers destructure and build it, so its fields
+/// are fixed, and anything added later is a method or another type.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[non_exhaustive]
 pub struct Parsed<T> {
     /// The parsed value.
     pub value: T,
@@ -17,6 +19,11 @@ pub struct Parsed<T> {
 }
 
 impl<T> Parsed<T> {
+    /// `value` with the `warnings` found reading it.
+    pub fn new(value: T, warnings: Vec<ParseWarning>) -> Self {
+        Parsed { value, warnings }
+    }
+
     /// Whether any warning was raised.
     pub fn has_warnings(&self) -> bool {
         !self
