@@ -118,7 +118,7 @@ impl OtherUri {
 }
 
 /// Why [`OtherUri::new`] refused its parts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum OtherUriError {
     /// Neither a scheme nor text.

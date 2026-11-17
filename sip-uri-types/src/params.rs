@@ -47,7 +47,7 @@ use storage::PairBuf;
 pub use storage::Pairs;
 
 /// A list's text would exceed `u32::MAX` bytes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct CapacityError;
 
