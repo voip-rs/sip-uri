@@ -26,7 +26,15 @@ documentation = "https://docs.rs/sip-uri"
 readme = "README.md"
 keywords = ["sip", "uri", "voip", "tel", "urn"]
 categories = ["parser-implementations", "network-programming"]
-exclude = ["CLAUDE.md", "hooks/", ".claude/", "scripts/"]
+exclude = [
+    "CLAUDE.md",
+    "hooks/",
+    ".claude/",
+    "scripts/",
+    ".github/",
+    ".gitleaks.toml",
+    "rustqual.toml",
+]
 
 [package.metadata.docs.rs]
 all-features = true
