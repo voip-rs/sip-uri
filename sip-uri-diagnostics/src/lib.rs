@@ -51,3 +51,19 @@ pub use warning::{Component, ParseWarning, WarningCode, WarningKind};
 #[cfg(doctest)]
 #[doc = include_str!("../README.md")]
 struct ReadmeDoctests;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn is_send_sync_unpin<T: Send + Sync + Unpin>() {}
+
+    #[test]
+    fn diagnostics_are_send_sync_unpin() {
+        is_send_sync_unpin::<ParseWarning>();
+        is_send_sync_unpin::<ParseError>();
+        is_send_sync_unpin::<Component>();
+        is_send_sync_unpin::<WarningCode>();
+        is_send_sync_unpin::<WarningKind>();
+    }
+}
