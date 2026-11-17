@@ -2,8 +2,8 @@
 //! code; the re-exported crates assert theirs.
 
 use sip_uri::{
-    HeaderMask, HostMask, OpaqueMask, Parsed, Redacted, Redaction, SipUri, TelUri, Uri, UrnUri,
-    UserMask,
+    FragmentMask, HeaderMask, HostMask, OpaqueMask, Parsed, Redacted, Redaction, SipUri, TelUri,
+    Uri, UrnUri, UserMask,
 };
 
 fn is_send_sync_unpin<T: Send + Sync + Unpin>() {}
@@ -21,4 +21,5 @@ fn public_types_are_send_sync_unpin() {
     is_send_sync_unpin::<HeaderMask>();
     is_send_sync_unpin::<OpaqueMask>();
     is_send_sync_unpin::<HostMask>();
+    is_send_sync_unpin::<FragmentMask>();
 }

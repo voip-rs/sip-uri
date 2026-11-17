@@ -26,10 +26,11 @@
 //! places none, such as a number in host or namespace position: that sender
 //! owns the exposure, and masking those positions is an option the caller
 //! turns on. The default also shows what lies outside the positions above:
-//! a SIP fragment, which runs from the first `#` to the end, the name of a
-//! header written without a value, and a URL's fragment. Text with no
-//! readable scheme, such as `*` or a bare host and port, is `Other` and
-//! renders as `***`.
+//! a SIP or tel: fragment, which runs from the first `#` to the end, and a
+//! URL's fragment, which `FragmentMask::Full` masks; the name of a header
+//! written without a value; and a URL's path, which only
+//! `OpaqueMask::Full` hides. Text with no readable scheme, such as `*` or a
+//! bare host and port, is `Other` and renders as `***`.
 //!
 //! A password is masked under every mask, as a log must never carry one:
 //! a SIP password under every `UserMask`, and in another URI shown under
@@ -112,6 +113,17 @@ pub enum HostMask {
     Full,
 }
 
+/// How a fragment is rendered by [`Redaction`]: a SIP or tel: fragment, and
+/// a hierarchical URI's fragment under [`OpaqueMask::Masked`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum FragmentMask {
+    /// Shown as Display writes it.
+    Visible,
+    /// The fragment becomes `#***`.
+    Full,
+}
+
 /// What a redacted rendering masks.
 ///
 /// [`Redaction::default`] masks the whole userinfo, or a tel: number, and
@@ -166,6 +178,7 @@ pub struct Redaction {
     urn: OpaqueMask,
     other: OpaqueMask,
     host: HostMask,
+    fragment: FragmentMask,
     public_urns: Arc<[String]>,
 }
 
@@ -178,6 +191,7 @@ impl Default for Redaction {
             urn: OpaqueMask::Masked,
             other: OpaqueMask::Masked,
             host: HostMask::Visible,
+            fragment: FragmentMask::Visible,
             public_urns: [
                 "service",
                 "nena:service",
@@ -251,6 +265,17 @@ impl Redaction {
     /// How the host of a SIP URI is rendered.
     pub fn host_mask(&self) -> HostMask {
         self.host
+    }
+
+    /// Set how a fragment is rendered.
+    pub fn with_fragment(mut self, mask: FragmentMask) -> Self {
+        self.fragment = mask;
+        self
+    }
+
+    /// How a fragment is rendered.
+    pub fn fragment_mask(&self) -> FragmentMask {
+        self.fragment
     }
 
     /// Set how a URN is rendered.
@@ -539,10 +564,7 @@ impl fmt::Display for Redacted<'_, SipUri> {
                 }
             }
         }
-        if let Some(frag) = uri.fragment() {
-            f.write_str("#")?;
-            f.write_str(frag)?;
-        }
+        write_fragment(f, uri.fragment(), how.fragment)?;
         Ok(())
     }
 }
@@ -561,10 +583,7 @@ impl fmt::Display for Redacted<'_, TelUri> {
             how,
             true,
         )?;
-        if let Some(frag) = uri.fragment() {
-            f.write_str("#")?;
-            f.write_str(frag)?;
-        }
+        write_fragment(f, uri.fragment(), how.fragment)?;
         Ok(())
     }
 }
@@ -645,7 +664,13 @@ impl fmt::Display for Redacted<'_, OtherUri> {
                     .as_str()
                     .get(scheme.len() + 1..)
                     .unwrap_or_default();
-                write_masked_other(f, scheme, rest)
+                write_masked_other(
+                    f,
+                    scheme,
+                    rest,
+                    self.how
+                        .fragment,
+                )
             }
             (OpaqueMask::Masked | OpaqueMask::Full, _) => f.write_str(MASK),
         }
@@ -693,7 +718,12 @@ fn colon_password_spans(raw: &str) -> Vec<(usize, usize)> {
 
 /// `scheme://authority/path?query#fragment` with the userinfo and query
 /// masked; a URI without `//` has no part to locate and is masked whole.
-fn write_masked_other(f: &mut fmt::Formatter<'_>, scheme: &str, rest: &str) -> fmt::Result {
+fn write_masked_other(
+    f: &mut fmt::Formatter<'_>,
+    scheme: &str,
+    rest: &str,
+    fragment_mask: FragmentMask,
+) -> fmt::Result {
     let Some(hier) = rest.strip_prefix("//") else {
         f.write_str(scheme)?;
         f.write_str(":")?;
@@ -725,5 +755,21 @@ fn write_masked_other(f: &mut fmt::Formatter<'_>, scheme: &str, rest: &str) -> f
         }
         None => f.write_str(before_fragment)?,
     }
-    f.write_str(fragment)
+    write_fragment(f, fragment.strip_prefix('#'), fragment_mask)
+}
+
+/// `#` and the fragment, or `#***`; nothing without one.
+fn write_fragment(
+    f: &mut fmt::Formatter<'_>,
+    fragment: Option<&str>,
+    mask: FragmentMask,
+) -> fmt::Result {
+    let Some(fragment) = fragment else {
+        return Ok(());
+    };
+    f.write_str("#")?;
+    match mask {
+        FragmentMask::Visible => f.write_str(fragment),
+        FragmentMask::Full => f.write_str(MASK),
+    }
 }

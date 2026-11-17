@@ -1,6 +1,6 @@
 use sip_uri::{
-    HeaderMask, HostMask, OpaqueMask, OtherUri, Redaction, SipUri, TelUri, Uri, UriParse,
-    UriRedact, UrnUri, UserMask,
+    FragmentMask, HeaderMask, HostMask, OpaqueMask, OtherUri, Redaction, SipUri, TelUri, Uri,
+    UriParse, UriRedact, UrnUri, UserMask,
 };
 
 fn sip(s: &str) -> SipUri {
@@ -450,6 +450,50 @@ fn a_rendering_is_copy() {
     let how = Redaction::default();
     let (a, b) = copy(uri.redacted(&how));
     assert_eq!(a.to_string(), b.to_string());
+}
+
+#[test]
+fn fragments_show_by_default_and_mask_on_request() {
+    let full = Redaction::default().with_fragment(FragmentMask::Full);
+    assert_eq!(full.fragment_mask(), FragmentMask::Full);
+    assert_eq!(Redaction::default().fragment_mask(), FragmentMask::Visible);
+    let cases = [
+        (
+            "sip:example.com#+15551234567",
+            "sip:example.com#+15551234567",
+            "sip:example.com#***",
+        ),
+        (
+            "tel:+15551234567;ext=12#+15557654321",
+            "tel:***;ext=***#+15557654321",
+            "tel:***;ext=***#***",
+        ),
+        (
+            "https://example.com/a?b#+15551234567",
+            "https://example.com/a?***#+15551234567",
+            "https://example.com/a?***#***",
+        ),
+        (
+            "https://example.com/a",
+            "https://example.com/a",
+            "https://example.com/a",
+        ),
+    ];
+    for (input, shown, masked) in cases {
+        let uri = Uri::parse(input).unwrap();
+        assert_eq!(
+            uri.redacted(&Redaction::default())
+                .to_string(),
+            shown,
+            "{input}"
+        );
+        assert_eq!(
+            uri.redacted(&full)
+                .to_string(),
+            masked,
+            "{input}"
+        );
+    }
 }
 
 /// Text read without a scheme has no password: a `:` starts none, in Debug

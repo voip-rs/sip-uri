@@ -89,7 +89,9 @@ mod warning;
 
 pub use equivalence::UriEquivalence;
 pub use parser::UriParse;
-pub use redact::{HeaderMask, HostMask, OpaqueMask, Redacted, Redaction, UriRedact, UserMask};
+pub use redact::{
+    FragmentMask, HeaderMask, HostMask, OpaqueMask, Redacted, Redaction, UriRedact, UserMask,
+};
 pub use sip_uri_diagnostics;
 pub use sip_uri_diagnostics::{Component, ParseError, ParseWarning, WarningCode, WarningKind};
 pub use sip_uri_types;
