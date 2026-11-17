@@ -147,35 +147,33 @@ impl fmt::Display for OtherUri {
     }
 }
 
-/// The text with the password of a `scheme://user:password@` userinfo
-/// written as `***`, as [`SipUri`]'s Debug masks its password.
+/// The text with every password written as `***`, as [`SipUri`]'s Debug
+/// masks its password: the one in a `scheme://user:password@` userinfo, or
+/// in other text whatever follows the second `:` of a run ending in `@`.
 impl fmt::Debug for OtherUri {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let text = match self.password_span() {
-            Some((start, end)) => {
-                std::borrow::Cow::Owned(format!("{}***{}", &self.raw[..start], &self.raw[end..]))
-            }
-            None => std::borrow::Cow::Borrowed(
-                self.raw
-                    .as_str(),
-            ),
-        };
+        let mut text = String::with_capacity(
+            self.raw
+                .len(),
+        );
+        let mut kept = 0;
+        for (start, end) in self.password_spans() {
+            text.push_str(&self.raw[kept..start]);
+            text.push_str("***");
+            kept = end;
+        }
+        text.push_str(&self.raw[kept..]);
         write!(f, "OtherUri({text:?})")
     }
 }
 
 impl OtherUri {
-    /// Byte range of a password: in `scheme://user:password@host…`, or in
-    /// other text whose part before its first `@` holds a second `:`, as a
-    /// SIP URI left in its angle brackets does.
-    fn password_span(&self) -> Option<(usize, usize)> {
-        self.url_password_span()
-            .or_else(|| self.colon_password_span())
-    }
-
-    /// `user:password@` with a scheme or any prefix before it: the text
-    /// between the last `:` and the first `@`, when another `:` precedes.
-    fn colon_password_span(&self) -> Option<(usize, usize)> {
+    /// Byte ranges of passwords, in order: a URL authority's, or for text
+    /// that is not `scheme://`, the colon rule's.
+    fn password_spans(&self) -> Vec<(usize, usize)> {
+        if let Some(span) = self.url_password_span() {
+            return vec![span];
+        }
         let hierarchical = self
             .scheme_end
             .and_then(|end| {
@@ -184,16 +182,29 @@ impl OtherUri {
             })
             .is_some_and(|rest| rest.starts_with("//"));
         if hierarchical {
-            return None;
+            return Vec::new();
         }
-        let at = self
+        self.colon_password_spans()
+    }
+
+    /// In each run of text ending in `@`, whatever follows its second `:`, so
+    /// `sip:u:pw@` masks `pw` while `mailto:alice@` and `a:b@` mask nothing.
+    fn colon_password_spans(&self) -> Vec<(usize, usize)> {
+        let mut spans = Vec::new();
+        let mut start = 0;
+        for (at, _) in self
             .raw
-            .find('@')?;
-        let head = &self.raw[..at];
-        let colon = head.rfind(':')?;
-        head[..colon]
-            .contains(':')
-            .then_some((colon + 1, at))
+            .match_indices('@')
+        {
+            let second_colon = self.raw[start..at]
+                .match_indices(':')
+                .nth(1);
+            if let Some((colon, _)) = second_colon {
+                spans.push((start + colon + 1, at));
+            }
+            start = at + 1;
+        }
+        spans
     }
 
     fn url_password_span(&self) -> Option<(usize, usize)> {
@@ -443,7 +454,7 @@ mod tests {
     use crate::Host;
 
     #[test]
-    fn debug_masks_the_password_of_a_hierarchical_userinfo() {
+    fn debug_masks_every_password() {
         let other = |s: &str, r: &str| OtherUri::new(Some(s), r).unwrap();
         let cases = [
             (
@@ -477,6 +488,18 @@ mod tests {
             (
                 OtherUri::new(None, "sip:+15551234567:pw@example.com;x=a:b@c").unwrap(),
                 r#"OtherUri("sip:+15551234567:***@example.com;x=a:b@c")"#,
+            ),
+            (
+                OtherUri::new(None, r#""a@b" <sip:user:secret@example.com>"#).unwrap(),
+                r#"OtherUri("%22a@b%22%20%3Csip:user:***@example.com%3E")"#,
+            ),
+            (
+                other("mailto", "a@b,sip:user:secret@example.com"),
+                r#"OtherUri("mailto:a@b,sip:user:***@example.com")"#,
+            ),
+            (
+                OtherUri::new(None, "<sip:user:se:cret@example.com>").unwrap(),
+                r#"OtherUri("%3Csip:user:***@example.com%3E")"#,
             ),
         ];
         for (uri, debug) in cases {
