@@ -451,3 +451,23 @@ fn a_rendering_is_copy() {
     let (a, b) = copy(uri.redacted(&how));
     assert_eq!(a.to_string(), b.to_string());
 }
+
+/// Text read without a scheme has no password: a `:` starts none, in Debug
+/// and redaction alike.
+#[test]
+fn schemeless_userinfo_is_a_user_part_not_a_password() {
+    let uri = sip("<sip:alice:pw@example.com>");
+    assert_eq!(uri.password(), None);
+    assert_eq!(uri.user(), Some("%3Csip%3Aalice%3Apw"));
+    assert!(format!("{uri:?}").contains("%3Csip%3Aalice%3Apw"));
+    assert_eq!(
+        uri.redacted(&Redaction::default().with_user(UserMask::KeepLast(4)))
+            .to_string(),
+        "%3Csip%3Aalice%3Apw@example.com"
+    );
+    assert_eq!(
+        uri.redacted(&Redaction::default())
+            .to_string(),
+        "***@example.com"
+    );
+}

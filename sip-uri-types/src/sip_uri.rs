@@ -20,7 +20,10 @@ use crate::params::{self, Headers, Params, UserParams};
 /// password, IPv6 hosts, URI parameters, and headers. A scheme or host that
 /// is missing or unreadable is `None`.
 ///
-/// [`fmt::Debug`] writes a password as `***`.
+/// [`fmt::Debug`] writes the [`password`](SipUri::password) as `***` and
+/// the user part as it is. Text read without a scheme, such as
+/// `<sip:user:secret@…>`, has no password: its `:` starts none, so the whole
+/// text before `@` is the user part and prints as one.
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(
     feature = "serde",
@@ -42,7 +45,7 @@ pub struct SipUri {
 
 /// The components of a [`SipUri`], each canonized on conversion.
 ///
-/// [`fmt::Debug`] writes a password as `***`.
+/// [`fmt::Debug`] writes the password as `***` and the user as it is.
 #[derive(Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[non_exhaustive]
