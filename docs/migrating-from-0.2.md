@@ -8,7 +8,7 @@ sip-uri 0.3 changes three things about the crate:
 
 Most of the API changes on this page follow from one of those three.
 
-## Crates: sip-uri-types and sip-uri
+## Crates: sip-uri-types, sip-uri-diagnostics and sip-uri
 
 The URI types (`Uri`, `SipUri`, `TelUri`, `UrnUri`, `OtherUri`, `Host`, `Hostname`, `Scheme`) are now defined in [sip-uri-types](https://crates.io/crates/sip-uri-types). sip-uri parses into them and re-exports them, so `use sip_uri::SipUri` keeps working.
 
@@ -38,7 +38,7 @@ Rust's orphan rule lets `FromStr` be implemented only in the crate that defines 
 
 ## Non-conformant input parses, with warnings
 
-0.2.9 already had `parse_with_warnings`, `Parsed`, `ParseWarning`, `Component`, `WarningCode` and `WarningKind`, as inherent methods and types, for the few breaches it accepted; most grammar breaches were still an `Err`. In 0.3 most of those errors became warnings, with new `WarningCode`s, and the methods moved to the `UriParse` trait, which adds `parse_strict`. The parser returns whatever it could read and reports each breach:
+0.2 already had `parse_with_warnings`, `Parsed`, `ParseWarning`, `Component`, `WarningCode` and `WarningKind`, as inherent methods and types, for the few breaches it accepted; most grammar breaches were still an `Err`. In 0.3 most of those errors became warnings, with new `WarningCode`s, and the methods moved to the `UriParse` trait, which adds `parse_strict`. The parser returns whatever it could read and reports each breach:
 
 ```rust
 use sip_uri::{Component, SipUri, UriParse, WarningCode};
@@ -64,7 +64,7 @@ A few inputs that were errors now parse to something:
 
 - **Missing scheme:** `"joe@example.com"` as `SipUri` has scheme `None` and a `MissingScheme` warning. As `Uri`, it is `Uri::Other`, since `Uri` never guesses a type for scheme-less text. Parse it as `SipUri` when your context says it is SIP.
 - **Wildcard:** `"*"` as `Uri` is `Uri::Other` with a `Wildcard` warning.
-- **Brackets:** `"<sip:alice@example.com>"` as `Uri` stays `Uri::Other`, as in 0.2.9, now held escaped as `%3Csip:alice@example.com%3E` with an `InvalidScheme` warning; as `SipUri` it is no longer an error. That text is header grammar; see [Display names](#display-names-and-header-params) below.
+- **Brackets:** `"<sip:alice@example.com>"` as `Uri` stays `Uri::Other`, as in 0.2, now held escaped as `%3Csip:alice@example.com%3E` with an `InvalidScheme` warning; as `SipUri` it is no longer an error. That text is header grammar; see [Display names](#display-names-and-header-params) below.
 - **Unreadable scheme:** as `SipUri`, text whose scheme cannot be read keeps everything up to `@` as the user part, and the `:` ending that prefix starts no password. `"<sip:+15551234567@example.com>"` has user `%3Csip%3A+15551234567` and an `InvalidScheme` warning, and the trailing `>` is dropped with a `TrailingContent` warning.
 
 ### Refusing non-conformant input
@@ -104,7 +104,7 @@ In 0.3, nearly everything those messages described is a typed `ParseWarning`. Ea
 - the byte offset (`position`);
 - whether the value survived (`WarningKind::Recovered`) or the component was dropped (`WarningKind::Lost`).
 
-Code that already read 0.2.9's warnings: `Component::UserParam`'s stable name is now `user-param`, not `uparam`, so a log filter keyed on the old string needs updating; `kind` is the method `kind()`, read from the code; `ParseWarning` is `Clone` but no longer `Copy`, so a warning taken out of a slice needs `.clone()`; warnings come in input order; and new codes report an IPv6 zone dropped from a host (`Ipv6Zone`) and a pair dropped from a list past its size limit (`TooLong`).
+Code that already read 0.2's warnings: `Component::UserParam`'s stable name is now `user-param`, not `uparam`, so a log filter keyed on the old string needs updating; `kind` is the method `kind()`, read from the code; `ParseWarning` is `Clone` but no longer `Copy`, so a warning taken out of a slice needs `.clone()`; warnings come in input order; and new codes report an IPv6 zone dropped from a host (`Ipv6Zone`) and a pair dropped from a list past its size limit (`TooLong`).
 
 That leaves a lenient parse three errors — empty input (which for `SipUri` includes input such as `:` or `@` that leaves no component), another type's scheme, and for `Host` alone no readable host — and a strict one a fourth:
 

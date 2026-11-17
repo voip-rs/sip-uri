@@ -332,8 +332,9 @@ assumed:
   checked with a byte-class table and held without a copy; a param or header
   list keeps all its pairs in one buffer, so a parsed URI costs a handful of
   allocations rather than several per param.
-- That buffer is read with unchecked slicing, the only `unsafe` in either
-  crate (sip-uri itself forbids it), since bounds checks on every name and
+- That buffer is read with unchecked slicing, the only `unsafe` in the three
+  crates (sip-uri and sip-uri-diagnostics forbid it), since bounds checks on
+  every name and
   value read cost a measured 12% on lookups and 5% on Display. The spans it
   reads are written only by the list itself; a list whose text
   would pass 4 GiB is refused (a dropped pair with a warning when parsing, an
@@ -341,7 +342,7 @@ assumed:
 
 ## Design
 
-- **Minimal dependencies** — sip-uri depends on sip-uri-types and, with the `serde` feature, serde; sip-uri-types depends on nothing but an optional `serde`. Not even `percent-encoding`: the subset needed is trivial and avoids transitive dep churn.
+- **Minimal dependencies** — sip-uri depends on sip-uri-types, sip-uri-diagnostics and, with the `serde` feature, serde; sip-uri-types depends on nothing but an optional `serde`, and sip-uri-diagnostics on nothing. Not even `percent-encoding`: the subset needed is trivial and avoids transitive dep churn.
 - **Hand-written parser** — the SIP URI grammar is regular enough that nom/regex
   are unnecessary overhead. Parsing follows the sofia-sip two-phase `@` discovery
   algorithm for correct handling of reserved characters in user-parts.
