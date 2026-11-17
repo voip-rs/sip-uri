@@ -2,7 +2,7 @@
 
 The warning and error vocabulary [sip-uri](https://crates.io/crates/sip-uri) reports SIP/SIPS (RFC 3261), tel: (RFC 3966) and URN (RFC 8141) URI parses in.
 
-A crate that hands sip-uri's diagnostics to its own callers names these types in its public API. They live in their own 1.x crate so that sip-uri's 0.x releases do not break that API: this crate only grows, and a new warning code or component is a minor release. sip-uri re-exports every item unchanged, so code that only parses can keep `use sip_uri::...`.
+A crate that hands sip-uri's diagnostics to its own callers names these types in its public API. They live in their own 1.x crate so that sip-uri's 0.x releases do not break that API: this crate only grows, and a new warning code or component is a minor release. A code's name, kind and meaning never change; a parser that recovers differently reports a new code and the old one is retired, never reused. `Display` text is for people and may be reworded in a minor release, so match on the code. sip-uri re-exports every item unchanged, so code that only parses can keep `use sip_uri::...`.
 
 ```sh
 cargo add sip-uri-diagnostics
@@ -13,7 +13,7 @@ use sip_uri_diagnostics::{Component, ParseWarning, WarningCode, WarningKind};
 
 let w = ParseWarning::new(Component::Port, WarningCode::SignedPort, Some(16));
 assert_eq!(w.kind(), WarningKind::Recovered);
-assert_eq!(w.to_string(), "port: signed port at byte 16");
+assert_eq!(w.position, Some(16));
 assert_eq!(w.code.as_str(), "signed-port");
 ```
 

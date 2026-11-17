@@ -13,6 +13,13 @@
 //! renaming one, or changing an [`as_str`](WarningCode::as_str) name, is
 //! breaking.
 //!
+//! A code's name, its [`kind`](WarningCode::kind) and its meaning never
+//! change. A parser that comes to recover from a breach differently reports
+//! it under a new code; the old one stays, documented as retired, and is
+//! never reused. `Display` and [`describe`](WarningCode::describe) are text
+//! for people and may be reworded in a minor release: match on the code,
+//! never on the text.
+//!
 //! Nothing here names or quotes input text. A [`ParseWarning`] says which
 //! component broke, how, at which byte offset and whether the value
 //! survived, and every `Display` is built from those alone: the user part is
@@ -22,13 +29,15 @@
 //! release.
 //!
 //! ```
-//! use sip_uri_diagnostics::{Component, ParseError, ParseWarning, WarningCode};
+//! use sip_uri_diagnostics::{Component, ParseError, ParseWarning, WarningCode, WarningKind};
 //!
 //! let w = ParseWarning::new(Component::Port, WarningCode::SignedPort, Some(16));
-//! assert_eq!(
-//!     ParseError::NonConformant(w).to_string(),
-//!     "non-conformant URI: port: signed port at byte 16"
-//! );
+//! assert_eq!(w.code.as_str(), "signed-port");
+//! assert_eq!(w.kind(), WarningKind::Recovered);
+//! match ParseError::NonConformant(w) {
+//!     ParseError::NonConformant(w) => assert_eq!(w.component, Component::Port),
+//!     _ => unreachable!(),
+//! }
 //! ```
 
 #![forbid(unsafe_code)]

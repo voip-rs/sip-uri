@@ -30,7 +30,7 @@ impl ParseWarning {
     ///
     /// let w = ParseWarning::new(Component::Port, WarningCode::InvalidPort, None);
     /// assert_eq!(w.kind(), WarningKind::Lost);
-    /// assert_eq!(w.to_string(), "port: invalid port dropped");
+    /// assert_eq!(w.code, WarningCode::InvalidPort);
     /// ```
     pub fn new(component: Component, code: WarningCode, position: Option<usize>) -> ParseWarning {
         ParseWarning {
@@ -355,6 +355,7 @@ mod tests {
         assert_eq!(names.len(), Component::ALL.len());
     }
 
+    /// Pins the layout; the wording itself is not part of the contract.
     #[test]
     fn display_is_component_description_and_position() {
         let w = ParseWarning::new(Component::User, WarningCode::InvalidChar, Some(5));
