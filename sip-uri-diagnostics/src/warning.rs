@@ -208,7 +208,7 @@ warning_codes! {
     InvalidScheme => "invalid-scheme", "invalid scheme";
     /// No scheme before the rest of the URI.
     MissingScheme => "missing-scheme", "missing scheme";
-    /// `*`, which is not a URI but the Contact and OPTIONS wildcard.
+    /// `*`, which is not a URI.
     Wildcard => "wildcard", "wildcard is not a URI";
     /// No host where the grammar requires one.
     MissingHost => "missing-host", "missing host";
