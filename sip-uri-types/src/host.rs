@@ -67,6 +67,17 @@ impl fmt::Display for Hostname {
     }
 }
 
+/// The address `name` reads as; every one `Ipv4Addr` parses starts with a
+/// digit, so other names skip the parse.
+fn ipv4(name: &str) -> Option<Ipv4Addr> {
+    name.starts_with(|c: char| c.is_ascii_digit())
+        .then(|| {
+            name.parse()
+                .ok()
+        })
+        .flatten()
+}
+
 impl Host {
     /// [`Host::Ipv4`] when the canonical name is a dotted-quad address as
     /// [`Ipv4Addr`]'s `FromStr` reads it, leading zeros refused; otherwise
@@ -84,41 +95,21 @@ impl Host {
     ///     Host::Ipv4(Ipv4Addr::new(198, 51, 100, 1))
     /// );
     /// assert!(matches!(Host::from_hostname("198.051.100.1"), Host::Hostname(_)));
+    /// assert_eq!(
+    ///     Host::from_hostname("%31%39%38.51.100.1"),
+    ///     Host::Ipv4(Ipv4Addr::new(198, 51, 100, 1))
+    /// );
     /// ```
-    pub fn from_hostname(name: impl Into<Hostname>) -> Host {
-        let name = name.into();
-        // Every address Ipv4Addr parses starts with a digit; other names skip it.
-        let addr = name
-            .as_str()
-            .starts_with(|c: char| c.is_ascii_digit())
-            .then(|| {
-                name.as_str()
-                    .parse::<Ipv4Addr>()
-            });
-        match addr {
-            Some(Ok(addr)) => Host::Ipv4(addr),
-            _ => Host::Hostname(name),
+    pub fn from_hostname(name: impl AsRef<str> + Into<Hostname>) -> Host {
+        // A dotted quad is canonical as written, so text that reads as one
+        // skips building the Hostname; an escaped one reads only once canonized.
+        if let Some(addr) = ipv4(name.as_ref()) {
+            return Host::Ipv4(addr);
         }
-    }
-
-    /// [`Host::from_hostname`] for a name as text, without building a
-    /// [`Hostname`] for one that is a dotted-quad address.
-    ///
-    /// ```
-    /// use std::net::Ipv4Addr;
-    /// use sip_uri_types::Host;
-    ///
-    /// assert_eq!(Host::from_name("198.51.100.1"), Host::Ipv4(Ipv4Addr::new(198, 51, 100, 1)));
-    /// assert_eq!(Host::from_name("EXAMPLE.com"), Host::from_hostname("EXAMPLE.com"));
-    /// ```
-    pub fn from_name(name: &str) -> Host {
-        // Only digits and dots parse as an address, and those are canonical as written.
-        let addr = name
-            .starts_with(|c: char| c.is_ascii_digit())
-            .then(|| name.parse::<Ipv4Addr>());
-        match addr {
-            Some(Ok(addr)) => Host::Ipv4(addr),
-            _ => Host::from_hostname(name),
+        let name = name.into();
+        match ipv4(name.as_str()) {
+            Some(addr) => Host::Ipv4(addr),
+            None => Host::Hostname(name),
         }
     }
 
@@ -212,20 +203,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn from_name_holds_what_from_hostname_holds() {
-        for name in [
-            "198.51.100.1",
-            "198.051.100.1",
-            "1.2.3",
-            "%31%39%38.51.100.1",
-            "198.51.100.1.",
-            "EXAMPLE.com",
-            "2001:db8::1",
-            "",
-            "0.0.0.0",
-            "255.255.255.256",
+    fn from_hostname_holds_one_host_whatever_the_name_type() {
+        let ipv4 = |a, b, c, d| Some(Ipv4Addr::new(a, b, c, d));
+        for (name, addr) in [
+            ("198.51.100.1", ipv4(198, 51, 100, 1)),
+            ("198.051.100.1", None),
+            ("1.2.3", None),
+            ("%31%39%38.51.100.1", ipv4(198, 51, 100, 1)),
+            ("198.51.100.1.", None),
+            ("EXAMPLE.com", None),
+            ("2001:db8::1", None),
+            ("", None),
+            ("0.0.0.0", ipv4(0, 0, 0, 0)),
+            ("255.255.255.256", None),
         ] {
-            assert_eq!(Host::from_name(name), Host::from_hostname(name), "{name:?}");
+            let expected = match addr {
+                Some(addr) => Host::Ipv4(addr),
+                None => Host::Hostname(Hostname::from(name)),
+            };
+            assert_eq!(Host::from_hostname(name), expected, "{name:?}");
+            assert_eq!(Host::from_hostname(name.to_string()), expected, "{name:?}");
+            assert_eq!(
+                Host::from_hostname(Hostname::from(name)),
+                expected,
+                "{name:?}"
+            );
         }
     }
 

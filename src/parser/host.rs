@@ -43,7 +43,7 @@ pub(crate) fn parse_from_uri(s: &str, warnings: &mut Warnings) -> (Option<Host>,
         if escaped {
             warnings.push(Component::Host, WarningCode::EscapedHost, host_str, 0);
         }
-        let host = Host::from_name(host_str);
+        let host = Host::from_hostname(host_str);
         if let Host::Hostname(name) = &host {
             let checked = if escaped { name.as_str() } else { host_str };
             match checked
