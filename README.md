@@ -192,8 +192,9 @@ This crate parses URIs only. `"Alice" <sip:alice@example.com>;tag=abc` is
 header grammar: parse it with
 [`SipHeaderAddr`](https://docs.rs/sip-header/latest/sip_header/struct.SipHeaderAddr.html)
 from [`sip-header`](https://crates.io/crates/sip-header), which handles display
-names, URIs and header-level parameters and re-exports this crate. Code
-written against sip-uri 0.2's `NameAddr` moves to `SipHeaderAddr`.
+names, URIs and header-level parameters and re-exports sip-uri-types and
+sip-uri-diagnostics. Code written against sip-uri 0.2's `NameAddr` moves to
+`SipHeaderAddr`.
 
 ## Percent-encoding
 
