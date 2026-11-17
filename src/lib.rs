@@ -98,7 +98,7 @@ pub use sip_uri_types;
 pub use sip_uri_types::encoding;
 pub use sip_uri_types::{
     ordered_headers_equivalent, AssignedName, Bare, CapacityError, Headers, Host, Hostname,
-    KindMismatch, OtherUri, OtherUriError, Pairs, Params, Scheme, SipUri, SipUriParts, TelUri,
+    KindMismatchError, OtherUri, OtherUriError, Pairs, Params, Scheme, SipUri, SipUriParts, TelUri,
     TelUriParts, Uri, UriHeaderEquivalence, UrnUri, UrnUriParts, UserHost, UserParams,
 };
 pub use warning::Parsed;

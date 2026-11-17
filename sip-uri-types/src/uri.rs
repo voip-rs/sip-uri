@@ -1,8 +1,8 @@
 //! The URI sum type and the opaque `Other` value.
 //!
-//! Converting a `Uri` into one variant's type fails with [`KindMismatch`],
-//! which hands the `Uri` back and names both kinds but never its text,
-//! since a user part is often a phone number.
+//! Converting a `Uri` into one variant's type fails with
+//! [`KindMismatchError`], which hands the `Uri` back and names both kinds
+//! but never its text, since a user part is often a phone number.
 //!
 //! `Other` keeps its text as sent except for the scheme, lowercased because
 //! schemes compare case-insensitively, so `scheme()` reads alike across
@@ -358,23 +358,23 @@ impl From<OtherUri> for Uri {
 /// assert_eq!(err.into_uri(), uri);
 /// ```
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct KindMismatch {
+pub struct KindMismatchError {
     expected: &'static str,
     uri: Uri,
 }
 
 /// Names the kinds only, as Display does: `unwrap()` on a conversion puts
 /// this in the panic message.
-impl fmt::Debug for KindMismatch {
+impl fmt::Debug for KindMismatchError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("KindMismatch")
+        f.debug_struct("KindMismatchError")
             .field("expected", &self.expected)
             .field("found", &kind(&self.uri))
             .finish()
     }
 }
 
-impl KindMismatch {
+impl KindMismatchError {
     /// The URI that was not of the expected kind.
     pub fn uri(&self) -> &Uri {
         &self.uri
@@ -400,24 +400,24 @@ fn kind(uri: &Uri) -> &'static str {
     }
 }
 
-impl fmt::Display for KindMismatch {
+impl fmt::Display for KindMismatchError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "expected {}, found {}", self.expected, kind(&self.uri))
     }
 }
 
-impl std::error::Error for KindMismatch {}
+impl std::error::Error for KindMismatchError {}
 
-/// `Uri` into a variant's type, a [`KindMismatch`] when it is another.
+/// `Uri` into a variant's type, a [`KindMismatchError`] when it is another.
 macro_rules! try_from_uri {
     ($($variant:ident => $ty:ty, $kind:ident);*) => {$(
         impl TryFrom<Uri> for $ty {
-            type Error = KindMismatch;
+            type Error = KindMismatchError;
 
-            fn try_from(uri: Uri) -> Result<Self, KindMismatch> {
+            fn try_from(uri: Uri) -> Result<Self, KindMismatchError> {
                 match uri {
                     Uri::$variant(u) => Ok(u),
-                    uri => Err(KindMismatch { expected: $kind, uri }),
+                    uri => Err(KindMismatchError { expected: $kind, uri }),
                 }
             }
         }
@@ -529,7 +529,7 @@ mod tests {
         let debug = format!("{:?}", TelUri::try_from(sip.clone()).unwrap_err());
         assert_eq!(
             debug,
-            r#"KindMismatch { expected: "a tel: URI", found: "a SIP URI" }"#
+            r#"KindMismatchError { expected: "a tel: URI", found: "a SIP URI" }"#
         );
 
         let cases = [
@@ -603,7 +603,7 @@ mod tests {
             for result in &results {
                 let back = result
                     .clone()
-                    .unwrap_or_else(KindMismatch::into_uri);
+                    .unwrap_or_else(KindMismatchError::into_uri);
                 assert_eq!(back, uri);
             }
             let matched = results
