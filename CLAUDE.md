@@ -39,6 +39,10 @@ Before changing a default mask in `src/redact.rs`, adding a masked or public pos
 
 URIs only (`addr-spec`), never SIP header field grammar. A test value with percent-encoded header-level params (`;tag=`, `;serviceurn=`) is header grammar leaking in.
 
+## No patch or pre-release versions in docs
+
+Docs, rustdoc and READMEs name a major (`0.3`, `1.x`) at most, never `1.0.0-rc.3` or `0.3.2`. Only a migration guide names versions, and only major to major.
+
 ## Release Workflow
 
 Use `/release` (`.claude/commands/release.md`); it owns the checks, changelog, tagging and publish steps.
