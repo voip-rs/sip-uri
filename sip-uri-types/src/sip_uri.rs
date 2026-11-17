@@ -20,8 +20,9 @@ use crate::params::{self, Headers, Params, UserParams};
 /// password, IPv6 hosts, URI parameters, and headers. A scheme or host that
 /// is missing or unreadable is `None`.
 ///
-/// [`fmt::Debug`] writes the [`password`](SipUri::password) as `***` and
-/// the user part as it is. Text read without a scheme, such as
+/// [`fmt::Debug`] writes the [`password`](SipUri::password), and the value
+/// of an `Authorization` or `Proxy-Authorization` header, as `***`, and the
+/// user part as it is. Text read without a scheme, such as
 /// `<sip:user:secret@…>`, has no password: its `:` starts none, so the whole
 /// text before `@` is the user part and prints as one.
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -45,7 +46,7 @@ pub struct SipUri {
 
 /// The components of a [`SipUri`], each canonized on conversion.
 ///
-/// [`fmt::Debug`] writes the password as `***` and the user as it is.
+/// [`fmt::Debug`] masks as [`SipUri`]'s does.
 #[derive(Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[non_exhaustive]
@@ -656,6 +657,33 @@ mod tests {
         }
         let without = SipUri::new(Host::Hostname("example.com".into()));
         assert!(format!("{without:?}").contains("password: None"));
+    }
+
+    #[test]
+    fn debug_masks_credential_header_values() {
+        let uri = SipUri::new(Host::Hostname("proxy.example.com".into()))
+            .with_header("Authorization", Some("Digest%20response%3Dabc"))
+            .with_header("proxy-authorization", Some("Bearer%20xyz"))
+            .with_header("Subject", Some("lunch"))
+            .with_header("Authorization", None);
+        let headers = format!("{:?}", uri.headers());
+        assert_eq!(
+            headers,
+            r#"[("Authorization", Some("***")), ("proxy-authorization", Some("***")), ("Subject", Some("lunch")), ("Authorization", None)]"#
+        );
+        for debug in [
+            format!("{uri:?}"),
+            format!("{:?}", crate::Uri::Sip(uri.clone())),
+            format!(
+                "{:?}",
+                uri.clone()
+                    .into_parts()
+            ),
+        ] {
+            assert!(debug.contains(&headers), "{debug}");
+        }
+        let params = crate::Params::new().with("authorization", Some("x"));
+        assert_eq!(format!("{params:?}"), r#"[("authorization", Some("x"))]"#);
     }
 
     #[test]

@@ -267,7 +267,7 @@ input.
 
 The default masks only what identifies a person: hosts, routing params, namespaces and schemes are public and stay visible for debugging. It does not chase an identity a sender put where the grammar places none: a number written as a SIP host (`sip:5551234567`) or as a URN NID shows. `with_host(HostMask::Full)` masks the host, and `OpaqueMask::Full` masks a URN's NID or another URI's scheme as well. A SIP, tel: or URL fragment shows unless `with_fragment(FragmentMask::Full)` masks it; a URL's path shows short of `OpaqueMask::Full`.
 
-A `Redaction` owns its policy and clones cheaply, so one built from configuration is stored once and lent to each `redacted(&how)` call. `Debug` writes the password as `***` but the user part as it is; text read without a scheme, such as `<sip:user:secret@…>`, has no password, so all of it before `@` is the user part.
+A `Redaction` owns its policy and clones cheaply, so one built from configuration is stored once and lent to each `redacted(&how)` call. `Debug` writes the password and an `Authorization` or `Proxy-Authorization` header value as `***` but the user part as it is; text read without a scheme, such as `<sip:user:secret@…>`, has no password, so all of it before `@` is the user part.
 
 ```rust
 use sip_uri::{HeaderMask, Redaction, SipUri, UriParse, UriRedact, UserMask};

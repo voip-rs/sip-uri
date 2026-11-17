@@ -531,7 +531,7 @@ impl PairBuf {
 }
 
 macro_rules! pair_list {
-    ($(#[$doc:meta])* $name:ident, $grammar:ty) => {
+    ($(#[$doc:meta])* $name:ident, $grammar:ty, $debug_value:path) => {
         $(#[$doc])*
         ///
         /// Names and values are held in canonical form: [`push`](Self::push),
@@ -655,7 +655,10 @@ macro_rules! pair_list {
         impl fmt::Debug for $name {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_list()
-                    .entries(self.iter())
+                    .entries(
+                        self.iter()
+                            .map(|(name, value)| (name, $debug_value(name, value))),
+                    )
                     .finish()
             }
         }
@@ -703,21 +706,41 @@ macro_rules! pair_list {
 pair_list!(
     /// Parameters of a SIP URI after the host, or of a tel: URI.
     Params,
-    ParamGrammar
+    ParamGrammar,
+    value_as_held
 );
 
 pair_list!(
     /// Parameters inside a SIP URI's userinfo, after the user part.
     UserParams,
-    UserParamGrammar
+    UserParamGrammar,
+    value_as_held
 );
 
 pair_list!(
     /// Headers of a SIP URI, after `?`. A header written without `=` has no
     /// value, and one written `name=` has an empty one.
+    ///
+    /// Debug writes the value of an `Authorization` or `Proxy-Authorization`
+    /// header as `***`.
     Headers,
-    HeaderGrammar
+    HeaderGrammar,
+    header_value_for_debug
 );
+
+fn value_as_held<'a>(_: &str, value: Option<&'a str>) -> Option<&'a str> {
+    value
+}
+
+/// Credentials: a Digest response or a bearer token.
+const CREDENTIAL_HEADERS: &[&str] = &["authorization", "proxy-authorization"];
+
+fn header_value_for_debug<'a>(name: &str, value: Option<&'a str>) -> Option<&'a str> {
+    let credential = CREDENTIAL_HEADERS
+        .iter()
+        .any(|c| name.eq_ignore_ascii_case(c));
+    value.map(|v| if credential { "***" } else { v })
+}
 
 /// Write each pair as `;name` or `;name=value`.
 pub(crate) fn format_params(pairs: Pairs<'_>, f: &mut fmt::Formatter<'_>) -> fmt::Result {

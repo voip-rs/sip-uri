@@ -230,7 +230,7 @@ assert_eq!(uri.redacted(&keep4).to_string(), "sip:+xxxxxxx4567:***@example.com?S
 
 `redacted()` comes from the `UriRedact` trait, so import it. It borrows the `Redaction`, which owns its policy (`with_masked_params()` takes any iterator of names) and clones cheaply, so a policy read from configuration is built once and stored, for example in a logger struct.
 
-`Debug` of `SipUri`, `SipUriParts` and `Uri` writes the password as `***`; 0.2's derived `Debug` printed it. The user part still prints as it is, including text read without a scheme, such as `<sip:user:secret@…>`, where a `:` starts no password and everything before `@` is the user part.
+`Debug` of `SipUri`, `SipUriParts` and `Uri` writes the password, and an `Authorization` or `Proxy-Authorization` header value, as `***`; 0.2's derived `Debug` printed it. The user part still prints as it is, including text read without a scheme, such as `<sip:user:secret@…>`, where a `:` starts no password and everything before `@` is the user part.
 
 ## Serde
 
