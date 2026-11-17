@@ -45,9 +45,10 @@ impl<T> Parsed<T> {
     pub fn into_strict(self) -> Result<T, ParseError> {
         match self
             .warnings
-            .first()
+            .into_iter()
+            .next()
         {
-            Some(w) => Err(ParseError::NonConformant(*w)),
+            Some(w) => Err(ParseError::NonConformant(w)),
             None => Ok(self.value),
         }
     }

@@ -11,7 +11,7 @@ use crate::ParseWarning;
 /// host, [`NoHost`](ParseError::NoHost); strict parsing also returns the
 /// first grammar breach as [`NonConformant`](ParseError::NonConformant).
 /// Display never quotes the input.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ParseError {
     /// The input is empty, or a SIP URI's input leaves no component, such

@@ -2,16 +2,15 @@
 //! survived it.
 //!
 //! A code's kebab-case name, description and kind are written once, in
-//! the `warning_codes!` table and `WarningCode`'s private `kind`;
-//! [`ParseWarning::new`] takes the kind from the code, so a warning cannot
-//! disagree with it.
+//! the `warning_codes!` table and [`WarningCode::kind`]; a warning holds no
+//! kind of its own, so it cannot disagree with its code.
 
 use std::fmt;
 
 /// A grammar breach the parser accepted rather than rejected.
 ///
 /// Names where the breach is, never what text it was.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub struct ParseWarning {
     /// URI component the breach is in.
@@ -20,8 +19,6 @@ pub struct ParseWarning {
     pub code: WarningCode,
     /// Byte offset into the parsed input, when one points at the breach.
     pub position: Option<usize>,
-    /// Whether the parsed value still carries what was sent.
-    pub kind: WarningKind,
 }
 
 impl ParseWarning {
@@ -32,7 +29,7 @@ impl ParseWarning {
     /// use sip_uri_diagnostics::{Component, ParseWarning, WarningCode, WarningKind};
     ///
     /// let w = ParseWarning::new(Component::Port, WarningCode::InvalidPort, None);
-    /// assert_eq!(w.kind, WarningKind::Lost);
+    /// assert_eq!(w.kind(), WarningKind::Lost);
     /// assert_eq!(w.to_string(), "port: invalid port dropped");
     /// ```
     pub fn new(component: Component, code: WarningCode, position: Option<usize>) -> ParseWarning {
@@ -40,8 +37,13 @@ impl ParseWarning {
             component,
             code,
             position,
-            kind: code.kind(),
         }
+    }
+
+    /// Whether the parsed value still carries what was sent: its code's kind.
+    pub fn kind(&self) -> WarningKind {
+        self.code
+            .kind()
     }
 }
 
@@ -101,7 +103,27 @@ pub enum Component {
 }
 
 impl Component {
-    /// Stable lowercase name, for logs and machine consumers.
+    /// Every component, in declaration order.
+    pub const ALL: &'static [Component] = &[
+        Component::Scheme,
+        Component::User,
+        Component::UserParam,
+        Component::Password,
+        Component::Host,
+        Component::Port,
+        Component::Param,
+        Component::Header,
+        Component::Fragment,
+        Component::Number,
+        Component::RComponent,
+        Component::QComponent,
+        Component::FComponent,
+        Component::Nid,
+        Component::Nss,
+        Component::Other,
+    ];
+
+    /// Stable kebab-case name, for logs and machine consumers.
     pub fn as_str(self) -> &'static str {
         match self {
             Component::Scheme => "scheme",
@@ -226,12 +248,14 @@ impl WarningCode {
             .0
     }
 
-    fn describe(self) -> &'static str {
+    /// What the code found, in words for people.
+    pub fn describe(self) -> &'static str {
         self.names()
             .1
     }
 
-    fn kind(self) -> WarningKind {
+    /// Whether a value parsed past this breach still carries what was sent.
+    pub fn kind(self) -> WarningKind {
         match self {
             WarningCode::EmptySegment
             | WarningCode::EmptyPort
@@ -286,6 +310,49 @@ mod tests {
         names.sort_unstable();
         names.dedup();
         assert_eq!(names.len(), WarningCode::ALL.len());
+    }
+
+    #[test]
+    fn component_all_lists_every_variant_once() {
+        let position = |c: Component| match c {
+            Component::Scheme => 0,
+            Component::User => 1,
+            Component::UserParam => 2,
+            Component::Password => 3,
+            Component::Host => 4,
+            Component::Port => 5,
+            Component::Param => 6,
+            Component::Header => 7,
+            Component::Fragment => 8,
+            Component::Number => 9,
+            Component::RComponent => 10,
+            Component::QComponent => 11,
+            Component::FComponent => 12,
+            Component::Nid => 13,
+            Component::Nss => 14,
+            Component::Other => 15,
+        };
+        let positions: Vec<usize> = Component::ALL
+            .iter()
+            .map(|&c| position(c))
+            .collect();
+        assert_eq!(positions, (0..=15).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn every_component_has_a_distinct_kebab_case_name() {
+        let mut names: Vec<&str> = Component::ALL
+            .iter()
+            .map(|c| c.as_str())
+            .collect();
+        assert!(names
+            .iter()
+            .all(|n| !n.is_empty()
+                && n.bytes()
+                    .all(|b| b.is_ascii_lowercase() || b == b'-')));
+        names.sort_unstable();
+        names.dedup();
+        assert_eq!(names.len(), Component::ALL.len());
     }
 
     #[test]

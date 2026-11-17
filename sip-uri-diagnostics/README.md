@@ -12,7 +12,7 @@ cargo add sip-uri-diagnostics
 use sip_uri_diagnostics::{Component, ParseWarning, WarningCode, WarningKind};
 
 let w = ParseWarning::new(Component::Port, WarningCode::SignedPort, Some(16));
-assert_eq!(w.kind, WarningKind::Recovered);
+assert_eq!(w.kind(), WarningKind::Recovered);
 assert_eq!(w.to_string(), "port: signed port at byte 16");
 assert_eq!(w.code.as_str(), "signed-port");
 ```
@@ -21,9 +21,9 @@ assert_eq!(w.code.as_str(), "signed-port");
 
 | Type | Description |
 |---|---|
-| `ParseWarning` | A grammar breach the parser accepted: component, code, byte position and kind |
-| `Component` | The URI component a warning is in; `as_str()` gives a stable kebab-case name |
-| `WarningCode` | What a warning found; `ALL` lists every code, `as_str()` gives a stable kebab-case name |
+| `ParseWarning` | A grammar breach the parser accepted: component, code and byte position; `kind()` is its code's |
+| `Component` | The URI component a warning is in; `ALL` lists every component, `as_str()` gives a stable kebab-case name |
+| `WarningCode` | What a warning found; `ALL` lists every code, `as_str()` gives a stable kebab-case name, `kind()` and `describe()` its kind and description |
 | `WarningKind` | Whether the parsed value still carries what was sent (`Recovered`) or dropped it (`Lost`) |
 | `ParseError` | `Empty`, `SchemeMismatch`, `NoHost`, or `NonConformant` from a strict parse |
 

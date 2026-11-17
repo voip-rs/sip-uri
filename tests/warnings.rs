@@ -24,7 +24,7 @@ fn sip(input: &str) -> (SipUri, Vec<ParseWarning>) {
 
 fn only(warnings: &[ParseWarning], component: Component, code: WarningCode) -> ParseWarning {
     assert_eq!(codes(warnings), [(component, code)], "{warnings:?}");
-    warnings[0]
+    warnings[0].clone()
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn invalid_user_char() {
     assert_eq!(uri.user(), Some("a%20b"));
     let w = only(&w, Component::User, WarningCode::InvalidChar);
     assert_eq!(w.position, Some(5));
-    assert_eq!(w.kind, WarningKind::Recovered);
+    assert_eq!(w.kind(), WarningKind::Recovered);
 }
 
 #[test]
@@ -144,7 +144,7 @@ fn empty_port() {
     let (uri, w) = sip("sip:alice@198.51.100.1:");
     assert_eq!(uri.port(), None);
     let w = only(&w, Component::Port, WarningCode::EmptyPort);
-    assert_eq!(w.kind, WarningKind::Lost);
+    assert_eq!(w.kind(), WarningKind::Lost);
 }
 
 #[test]
@@ -177,7 +177,7 @@ fn empty_param_segment() {
     );
     assert!(w
         .iter()
-        .all(|w| w.kind == WarningKind::Lost));
+        .all(|w| w.kind() == WarningKind::Lost));
 }
 
 #[test]
@@ -575,6 +575,7 @@ fn strict_rejects_what_lenient_warns_about() {
             SipUri::parse_with_warnings("sip:example.com:+5060")
                 .unwrap()
                 .warnings[0]
+                .clone()
         ))
     );
     assert!(SipUri::parse_strict("sip:alice@example.com").is_ok());

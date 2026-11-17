@@ -148,7 +148,7 @@ mod tests {
             .into_iter()
             .flat_map(|p| p.warnings)
             .filter(|w| w.code == WarningCode::TooLong)
-            .map(|w| (w.component, w.position, w.kind))
+            .map(|w| (w.component, w.position, w.kind()))
             .collect();
         assert_eq!(
             found,

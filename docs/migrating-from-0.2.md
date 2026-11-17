@@ -104,7 +104,7 @@ In 0.3, nearly everything those messages described is a typed `ParseWarning`. Ea
 - the byte offset (`position`);
 - whether the value survived (`WarningKind::Recovered`) or the component was dropped (`WarningKind::Lost`).
 
-Code that already read 0.2.9's warnings: `Component::UserParam`'s stable name is now `user-param`, not `uparam`, so a log filter keyed on the old string needs updating; warnings come in input order; and new codes report an IPv6 zone dropped from a host (`Ipv6Zone`) and a pair dropped from a list past its size limit (`TooLong`).
+Code that already read 0.2.9's warnings: `Component::UserParam`'s stable name is now `user-param`, not `uparam`, so a log filter keyed on the old string needs updating; `kind` is the method `kind()`, read from the code; `ParseWarning` is `Clone` but no longer `Copy`, so a warning taken out of a slice needs `.clone()`; warnings come in input order; and new codes report an IPv6 zone dropped from a host (`Ipv6Zone`) and a pair dropped from a list past its size limit (`TooLong`).
 
 That leaves a lenient parse three errors — empty input (which for `SipUri` includes input such as `:` or `@` that leaves no component), another type's scheme, and for `Host` alone no readable host — and a strict one a fourth:
 

@@ -18,9 +18,9 @@ fn diagnostics_resolve_through_both_crates() {
         code(sip_uri::WarningCode::SignedPort),
         Some(16),
     ));
-    assert_eq!(kind(w.kind), sip_uri::WarningKind::Recovered);
+    assert_eq!(kind(w.kind()), sip_uri::WarningKind::Recovered);
     assert_eq!(
-        crate_path(error(d::ParseError::NonConformant(w))),
+        crate_path(error(d::ParseError::NonConformant(w.clone()))),
         sip_uri::ParseError::NonConformant(w)
     );
 }
