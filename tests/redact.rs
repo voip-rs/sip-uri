@@ -1,6 +1,6 @@
 use sip_uri::{
-    HeaderMask, HostMask, OpaqueMask, Redaction, SipUri, TelUri, Uri, UriParse, UriRedact, UrnUri,
-    UserMask,
+    HeaderMask, HostMask, OpaqueMask, OtherUri, Redaction, SipUri, TelUri, Uri, UriParse,
+    UriRedact, UrnUri, UserMask,
 };
 
 fn sip(s: &str) -> SipUri {
@@ -323,11 +323,62 @@ fn caller_uris_parsed_as_other_are_masked_by_default() {
                 .to_string(),
             masked
         );
+        assert_eq!(visible_as_debug(other), format!("{other:?}"), "{input}");
+    }
+}
+
+/// The Visible rendering in OtherUri's Debug wrapper, to compare the two
+/// renderings' password masks.
+fn visible_as_debug(other: &OtherUri) -> String {
+    let visible = Redaction::default().other(OpaqueMask::Visible);
+    format!(
+        "OtherUri({:?})",
+        other
+            .redacted(&visible)
+            .to_string()
+    )
+}
+
+#[test]
+fn visible_other_masks_every_password_as_debug_does() {
+    let inputs = [
+        (
+            "http://alice:secret@example.com/",
+            "http://alice:***@example.com/",
+        ),
+        ("https://example.com/a:b@c", "https://example.com/a:b@c"),
+        ("mailto:alice@example.com", "mailto:alice@example.com"),
+        ("mailto:alice:x@example.com", "mailto:alice:***@example.com"),
+        (
+            "<sip:alice:secret@example.com>",
+            "%3Csip:alice:***@example.com%3E",
+        ),
+        (
+            "\"a@b\" <sip:user:secret@example.com>",
+            "%22a@b%22%20%3Csip:user:***@example.com%3E",
+        ),
+        (
+            "mailto:a@b,sip:user:secret@example.com",
+            "mailto:a@b,sip:user:***@example.com",
+        ),
+        (
+            "<sip:user:se:cret@example.com>",
+            "%3Csip:user:***@example.com%3E",
+        ),
+    ];
+    for (input, shown) in inputs {
+        let uri = Uri::parse(input).unwrap();
+        let other = uri
+            .as_other()
+            .unwrap();
+        let visible = Redaction::default().other(OpaqueMask::Visible);
         assert_eq!(
             uri.redacted(&visible)
                 .to_string(),
-            uri.to_string()
+            shown,
+            "{input}"
         );
+        assert_eq!(visible_as_debug(other), format!("{other:?}"), "{input}");
     }
 }
 

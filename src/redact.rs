@@ -30,6 +30,13 @@
 //! header written without a value, and a URL's fragment. Text with no
 //! readable scheme, such as `*` or a bare host and port, is `Other` and
 //! renders as `***`.
+//!
+//! A password is masked under every mask, as a log must never carry one:
+//! a SIP password under every `UserMask`, and in another URI shown under
+//! `OpaqueMask::Visible`, the password sip-uri-types' `OtherUri` Debug masks.
+//! The span finder is kept here rather than exported from the data crate,
+//! so it mirrors that Debug's rule, and tests/redact.rs compares the two
+//! renderings over one table: a change to either rule changes both.
 
 use std::fmt;
 use std::sync::Arc;
@@ -89,7 +96,8 @@ pub enum OpaqueMask {
     /// A URN becomes `urn:***` and another URI `***`, for senders that put
     /// an identity in the NID or scheme position.
     Full,
-    /// Shown as Display writes it.
+    /// Shown as Display writes it, except that a password in another URI
+    /// is `***`, as its Debug writes it.
     Visible,
 }
 
@@ -624,7 +632,18 @@ impl fmt::Display for Redacted<'_, OtherUri> {
             self.uri
                 .scheme(),
         ) {
-            (OpaqueMask::Visible, _) => fmt::Display::fmt(self.uri, f),
+            (OpaqueMask::Visible, scheme) => {
+                let raw = self
+                    .uri
+                    .as_str();
+                let mut kept = 0;
+                for (start, end) in other_password_spans(raw, scheme.map(str::len)) {
+                    f.write_str(&raw[kept..start])?;
+                    f.write_str(MASK)?;
+                    kept = end;
+                }
+                f.write_str(&raw[kept..])
+            }
             (OpaqueMask::Masked, Some(scheme)) => {
                 let rest = self
                     .uri
@@ -636,6 +655,45 @@ impl fmt::Display for Redacted<'_, OtherUri> {
             (OpaqueMask::Masked | OpaqueMask::Full, _) => f.write_str(MASK),
         }
     }
+}
+
+/// Byte ranges of the passwords in an other URI's text, found as
+/// sip-uri-types' `OtherUri` Debug finds them; see the module notes.
+fn other_password_spans(raw: &str, scheme_end: Option<usize>) -> Vec<(usize, usize)> {
+    let Some(hier) = scheme_end.and_then(|end| {
+        raw.get(end + 1..)?
+            .strip_prefix("//")
+    }) else {
+        return colon_password_spans(raw);
+    };
+    let authority_start = raw.len() - hier.len();
+    let authority = hier
+        .find(['/', '?', '#'])
+        .map_or(hier, |end| &hier[..end]);
+    let Some(at) = authority.rfind('@') else {
+        return Vec::new();
+    };
+    authority[..at]
+        .find(':')
+        .map(|colon| (authority_start + colon + 1, authority_start + at))
+        .into_iter()
+        .collect()
+}
+
+/// In each run of text ending in `@`, whatever follows its second `:`.
+fn colon_password_spans(raw: &str) -> Vec<(usize, usize)> {
+    let mut spans = Vec::new();
+    let mut start = 0;
+    for (at, _) in raw.match_indices('@') {
+        if let Some((colon, _)) = raw[start..at]
+            .match_indices(':')
+            .nth(1)
+        {
+            spans.push((start + colon + 1, at));
+        }
+        start = at + 1;
+    }
+    spans
 }
 
 /// `scheme://authority/path?query#fragment` with the userinfo and query
